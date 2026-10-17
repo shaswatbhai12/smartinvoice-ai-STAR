@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#3b82f6" rx="80"/>
+  <g fill="#ffffff">
+    <!-- Invoice Document -->
+    <rect x="140" y="100" width="232" height="312" rx="12" fill="#ffffff"/>
+    <rect x="140" y="100" width="232" height="60" rx="12" fill="#60a5fa"/>
+    <rect x="170" y="125" width="172" height="10" rx="5" fill="#ffffff"/>
+    
+    <!-- Lines representing text -->
+    <rect x="170" y="190" width="172" height="8" rx="4" fill="#93c5fd"/>
+    <rect x="170" y="215" width="140" height="8" rx="4" fill="#93c5fd"/>
+    <rect x="170" y="240" width="160" height="8" rx="4" fill="#93c5fd"/>
+    
+    <rect x="170" y="280" width="172" height="8" rx="4" fill="#93c5fd"/>
+    <rect x="170" y="305" width="120" height="8" rx="4" fill="#93c5fd"/>
+    
+    <!-- AI Sparkle -->
+    <g transform="translate(350, 350)">
+      <circle cx="0" cy="0" r="35" fill="#fbbf24" opacity="0.9"/>
+      <path d="M 0,-25 L 0,25 M -25,0 L 25,0 M -18,-18 L 18,18 M -18,18 L 18,-18" 
+            stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+    </g>
+  </g>
+</svg>

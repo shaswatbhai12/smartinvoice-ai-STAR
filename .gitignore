@@ -1,0 +1,18 @@
+node_modules
+dist
+dev-dist
+build
+.gradle
+*.log
+.DS_Store
+.vercel
+
+# secrets and signing keys: never commit these
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.apk
+*.aab
+*.idsig
