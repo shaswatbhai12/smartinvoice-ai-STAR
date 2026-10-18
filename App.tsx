@@ -347,6 +347,14 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
   };
 
   const activeProfile = profiles.find(p => p.id === activeProfileId);
+  const belongsToActiveProfile = (invoice: InvoiceData) => {
+    if (invoice.vendorProfileId === activeProfileId) return true;
+    if (invoice.vendorProfileId || !activeProfile) return false;
+    const sameName = invoice.vendorName.trim().toLowerCase() === activeProfile.vendorName.trim().toLowerCase();
+    const sameGstin = !invoice.vendorGstin || !activeProfile.vendorGstin ||
+      invoice.vendorGstin.trim().toLowerCase() === activeProfile.vendorGstin.trim().toLowerCase();
+    return sameName && sameGstin;
+  };
   const compareInvoiceNumbers = (left: InvoiceData, right: InvoiceData) => {
     const leftNumber = Number(left.invoiceNumber);
     const rightNumber = Number(right.invoiceNumber);
@@ -360,7 +368,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
   };
 
   const profileHistory = history
-    .filter(inv => inv.vendorProfileId === activeProfileId)
+    .filter(belongsToActiveProfile)
     .sort(compareInvoiceNumbers);
   const filteredHistory = filterInvoices(profileHistory, searchQuery);
   const receiverSuggestions = profileHistory
@@ -658,20 +666,20 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
       {/* Navigation */}
       <nav className="no-print bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
+          <div className="flex min-h-16 flex-wrap items-center justify-between gap-3 py-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="w-10 h-10 shrink-0 bg-indigo-600 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <span className="text-xl font-bold text-gray-900 tracking-tight">SmartInvoice AI</span>
+              <span className="truncate text-lg sm:text-xl font-bold text-gray-900 tracking-tight">SmartInvoice AI</span>
               {/* Profile switcher */}
               {profiles.length > 0 && (
                 <select
                   value={activeProfileId || ''}
                   onChange={e => switchProfile(e.target.value)}
-                  className="ml-2 text-sm border border-gray-200 rounded-md px-2 py-1 text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="ml-0 max-w-[42vw] text-sm border border-gray-200 rounded-md px-2 py-1 text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none sm:ml-2 sm:max-w-none"
                 >
                   {profiles.map(p => (
                     <option key={p.id} value={p.id}>{p.vendorName}</option>
@@ -679,7 +687,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                 </select>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-wrap items-center justify-end gap-1 sm:w-auto sm:gap-2">
               <button onClick={() => setView('editor')} className={`px-3 py-2 text-sm font-medium rounded-md transition ${view === 'editor' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>Generator</button>
               <button onClick={() => setView('history')} className={`px-3 py-2 text-sm font-medium rounded-md transition ${view === 'history' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>History ({profileHistory.length})</button>
               <button onClick={() => setView('receivables')} className={`px-3 py-2 text-sm font-medium rounded-md transition ${view === 'receivables' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>Receivables</button>
@@ -699,14 +707,14 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
         </div>
       </nav>
 
-      <main className="flex-grow container mx-auto px-4 py-8 max-w-7xl">
+      <main className="flex-grow container mx-auto w-full px-3 py-5 sm:px-4 sm:py-8 max-w-7xl">
 
         {/* EDITOR VIEW */}
         {view === 'editor' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
             <div className="no-print space-y-6">
-              <div className="flex items-center gap-3">
-                <button onClick={startNew} className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-indigo-700 transition">
+              <div className="flex flex-wrap items-center gap-3">
+                <button onClick={startNew} className="w-full bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-indigo-700 transition sm:w-auto">
                   + Start New Invoice
                 </button>
                 {activeProfile && (
@@ -719,12 +727,12 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                 receiverSuggestions={receiverSuggestions}
               />
             </div>
-            <div className="space-y-4">
-              <div className="no-print flex justify-between items-center mb-2">
+            <div className="min-w-0 space-y-4">
+              <div className="no-print flex flex-wrap justify-between items-center gap-3 mb-2">
                 <h3 className="text-lg font-bold text-gray-900">Live Preview</h3>
-                <div className="flex gap-2">
-                  <button onClick={saveToHistory} className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-md font-semibold hover:bg-gray-50 transition">Save Draft</button>
-                  <button onClick={handlePrint} className="bg-indigo-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-indigo-700 transition flex items-center gap-2">
+                <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                  <button onClick={saveToHistory} className="flex-1 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-md font-semibold hover:bg-gray-50 transition sm:flex-none">Save Draft</button>
+                  <button onClick={handlePrint} className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-indigo-700 transition flex items-center justify-center gap-2 sm:flex-none">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                     </svg>
@@ -732,7 +740,9 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                   </button>
                 </div>
               </div>
-              <InvoicePreview data={currentInvoice} />
+              <div className="overflow-x-auto pb-2">
+                <InvoicePreview data={currentInvoice} />
+              </div>
             </div>
           </div>
         )}
@@ -938,7 +948,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                           <td className="px-4 py-3 text-right font-semibold">{formatStatementCurrency(amounts.total)}</td>
                           <td className="px-2 py-2 text-right align-top">
                             <div className="space-y-1">
-                              {(invoice.receipts || []).filter(receipt => receipt.amount > 0).map(receipt => (
+                              {(invoice.receipts || []).map(receipt => (
                                 <div key={receipt.id} className="no-print flex items-center justify-end gap-1">
                                   <input
                                     type="number"
@@ -950,6 +960,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                                       if (receipt.amount <= 0) removeReceipt(invoice, receipt.id);
                                     }}
                                     className="w-24 px-1.5 py-1 border border-gray-200 rounded text-right"
+                                    placeholder="Amount"
                                     aria-label={`Received amount for invoice ${invoice.invoiceNumber}`}
                                   />
                                   <input
