@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { InvoiceData, EMPTY_INVOICE, VendorProfile } from './types';
+import { InvoiceData, InvoiceReceipt, EMPTY_INVOICE, VendorProfile } from './types';
 import InvoiceForm from './components/InvoiceForm';
 import InvoicePreview from './components/InvoicePreview';
 import { CloudSync, SyncStatus, readLegacyLocal } from './services/cloudSync';
@@ -21,6 +21,32 @@ const EMPTY_PROFILE: Omit<VendorProfile, 'id'> = {
   dealsIn: '',
   lastInvoiceNumber: 114,
 };
+
+const invoiceAmounts = (invoice: InvoiceData) => {
+  const subtotal = invoice.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+  const taxRate = (Number(invoice.cgstRate) || 0) +
+    (Number(invoice.sgstRate) || 0) +
+    (Number(invoice.igstRate) || 0);
+  const isGstInvoice = invoice.isGstRegistered ?? Boolean(invoice.vendorGstin || taxRate > 0);
+  const gst = isGstInvoice
+    ? subtotal * taxRate / 100
+    : 0;
+  const total = Math.round(subtotal + gst);
+  const received = invoice.receipts?.length
+    ? invoice.receipts.reduce((sum, receipt) => sum + Math.max(0, Number(receipt.amount) || 0), 0)
+    : Math.max(0, Number(invoice.amountReceived) || 0);
+  return { subtotal, gst, total, received, remaining: total - received };
+};
+
+const invoicePaymentStatus = (invoice: InvoiceData) => {
+  const { received, remaining } = invoiceAmounts(invoice);
+  if (remaining < 0) return 'Overpaid';
+  if (remaining === 0) return 'Paid';
+  if (received > 0) return 'Partial';
+  return 'Unpaid';
+};
+
+const receiptDate = () => new Date().toISOString().split('T')[0];
 
 interface ProfileFormModalProps {
   profileDraft: Omit<VendorProfile, 'id'>;
@@ -125,7 +151,7 @@ const LEGACY_DONE_KEY = 'legacy_upload_done';
 const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot = null }) => {
   const [profiles, setProfiles] = useState<VendorProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
-  const [view, setView] = useState<'editor' | 'history' | 'profiles'>('editor');
+  const [view, setView] = useState<'editor' | 'history' | 'receivables' | 'profiles'>('editor');
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [editingProfile, setEditingProfile] = useState<VendorProfile | null>(null);
   const [profileDraft, setProfileDraft] = useState<Omit<VendorProfile, 'id'>>(EMPTY_PROFILE);
@@ -133,6 +159,9 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
   const [history, setHistory] = useState<InvoiceData[]>([]);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statementQuery, setStatementQuery] = useState('');
+  const [statementFrom, setStatementFrom] = useState('');
+  const [statementTo, setStatementTo] = useState('');
 
   const parseLocalJSON = <T,>(raw: string | null, fallback: T): T => {
     if (!raw) return fallback;
@@ -336,6 +365,34 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
   const filteredHistory = filterInvoices(profileHistory, searchQuery);
   const receiverSuggestions = profileHistory
     .filter(inv => inv.clientName.trim());
+  const statementInvoices = profileHistory.filter(invoice => {
+    const query = statementQuery.trim().toLowerCase();
+    const matchesReceiver = !query ||
+      invoice.clientName.toLowerCase().includes(query) ||
+      invoice.clientGstin.toLowerCase().includes(query);
+    const matchesFrom = !statementFrom || invoice.date >= statementFrom;
+    const matchesTo = !statementTo || invoice.date <= statementTo;
+    return matchesReceiver && matchesFrom && matchesTo;
+  }).sort(compareInvoiceNumbers);
+  const statementTotals = statementInvoices.reduce(
+    (totals, invoice) => {
+      const amounts = invoiceAmounts(invoice);
+      return {
+        subtotal: totals.subtotal + amounts.subtotal,
+        gst: totals.gst + amounts.gst,
+        total: totals.total + amounts.total,
+        received: totals.received + amounts.received,
+        remaining: totals.remaining + amounts.remaining,
+      };
+    },
+    { subtotal: 0, gst: 0, total: 0, received: 0, remaining: 0 }
+  );
+  const formatStatementCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 2,
+    }).format(amount);
 
   const switchProfile = (id: string) => {
     const profile = profiles.find(p => p.id === id);
@@ -428,6 +485,91 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
     document.title = `${currentInvoice.clientName || 'Invoice'} - ${currentInvoice.invoiceNumber}`.trim();
     window.print();
     document.title = prev;
+  };
+
+  const updateReceipts = (invoice: InvoiceData, receipts: InvoiceReceipt[]) => {
+    persistHistory(history.map(item =>
+      invoiceKey(item) === invoiceKey(invoice) ? { ...item, receipts } : item
+    ));
+  };
+
+  const addReceipt = (invoice: InvoiceData) => {
+    const legacyReceipt = !invoice.receipts?.length && Number(invoice.amountReceived) > 0
+      ? [{
+          id: `legacy-${invoice.invoiceNumber}`,
+          amount: Number(invoice.amountReceived),
+          date: invoice.date || receiptDate(),
+        }]
+      : [];
+    updateReceipts(invoice, [
+      ...legacyReceipt,
+      ...(invoice.receipts || []),
+      { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, amount: 0, date: receiptDate() },
+    ]);
+  };
+
+  const removeReceipt = (invoice: InvoiceData, receiptId: string) => {
+    updateReceipts(invoice, (invoice.receipts || []).filter(receipt => receipt.id !== receiptId));
+  };
+
+  const changeReceipt = (invoice: InvoiceData, receiptId: string, changes: Partial<InvoiceReceipt>) => {
+    updateReceipts(invoice, (invoice.receipts || []).map(receipt =>
+      receipt.id === receiptId ? { ...receipt, ...changes } : receipt
+    ));
+  };
+
+  const handleStatementPrint = () => {
+    const statement = document.getElementById('printable-statement');
+    if (!statement) {
+      alert('Could not prepare the receivables statement for printing.');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=1200,height=800');
+    if (!printWindow) {
+      alert('Please allow pop-ups to print the receivables statement.');
+      return;
+    }
+
+    const title = `${statementQuery || 'Receivables Statement'} - ${activeProfile?.vendorName || ''}`.trim();
+    const statementCopy = statement.cloneNode(true) as HTMLElement;
+    const statementTableBody = statementCopy.querySelector('tbody');
+    if (statementTableBody) {
+      Array.from(statementTableBody.children)
+        .sort((left, right) => {
+          const leftNumber = Number(left.querySelector('td')?.textContent?.replace('#', '').trim());
+          const rightNumber = Number(right.querySelector('td')?.textContent?.replace('#', '').trim());
+          if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) return leftNumber - rightNumber;
+          return (left.querySelector('td')?.textContent || '').localeCompare(right.querySelector('td')?.textContent || '', undefined, { numeric: true });
+        })
+        .forEach(row => statementTableBody.appendChild(row));
+    }
+    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(style => style.outerHTML)
+      .join('');
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>${title.replace(/[<>&"]/g, '')}</title>
+          ${styles}
+          <style>
+            @page { size: A4 landscape; margin: 6mm; }
+            html, body { margin: 0; padding: 0; background: white; }
+            body { width: 100%; overflow: visible; }
+          </style>
+        </head>
+        <body>${statementCopy.outerHTML}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.onafterprint = () => printWindow.close();
+    printWindow.onload = () => {
+      printWindow.print();
+    };
   };
 
   const exportBackup = () => {
@@ -540,6 +682,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
             <div className="flex items-center gap-2">
               <button onClick={() => setView('editor')} className={`px-3 py-2 text-sm font-medium rounded-md transition ${view === 'editor' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>Generator</button>
               <button onClick={() => setView('history')} className={`px-3 py-2 text-sm font-medium rounded-md transition ${view === 'history' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>History ({profileHistory.length})</button>
+              <button onClick={() => setView('receivables')} className={`px-3 py-2 text-sm font-medium rounded-md transition ${view === 'receivables' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>Receivables</button>
               <button onClick={() => setView('profiles')} className={`px-3 py-2 text-sm font-medium rounded-md transition ${view === 'profiles' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>Profiles</button>
               {sync && (
                 <span className={`${syncStatus === 'error' ? 'inline bg-red-50 text-red-600' : 'hidden sm:inline bg-gray-100 text-gray-500'} text-xs font-medium px-2 py-1 rounded-full`}>
@@ -644,7 +787,17 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                     <div className="flex justify-between items-start mb-4">
                       <div className="text-sm font-bold text-indigo-600">#{inv.invoiceNumber}</div>
                       <div className="flex items-center gap-2">
-                        <div className="text-xs text-gray-400 font-medium">{inv.date}</div>
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="text-xs text-gray-400 font-medium">{inv.date}</div>
+                          {(() => {
+                            const status = invoicePaymentStatus(inv);
+                            return (
+                              <span className={`rounded-full px-2 py-1 text-xs font-semibold ${status === 'Paid' ? 'bg-green-50 text-green-700' : status === 'Overpaid' ? 'bg-blue-50 text-blue-700' : status === 'Partial' ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'}`}>
+                                {status}
+                              </span>
+                            );
+                          })()}
+                        </div>
                         <button onClick={e => { e.stopPropagation(); deleteFromHistory(history.indexOf(inv)); }} className="text-gray-300 hover:text-red-500 transition">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
@@ -665,6 +818,175 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* RECEIVABLES VIEW */}
+        {view === 'receivables' && (
+          <div id="printable-statement" className="space-y-6">
+            <div className="no-print flex flex-wrap justify-between items-end gap-3">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Receivables Statement</h2>
+                <p className="text-sm text-gray-500 mt-1">Track billed, GST, received, and remaining amounts by receiver.</p>
+              </div>
+              <button onClick={handleStatementPrint} className="bg-indigo-600 text-white px-4 py-2 rounded-md font-semibold hover:bg-indigo-700 transition">
+                Print / Export PDF
+              </button>
+            </div>
+            <div className="no-print grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input
+                type="search"
+                value={statementQuery}
+                onChange={e => setStatementQuery(e.target.value)}
+                placeholder="Search company name or GSTIN"
+                aria-label="Search receiver statement"
+                className="px-4 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none md:col-span-3"
+              />
+              <label className="text-xs font-medium text-gray-500">
+                From date
+                <input type="date" value={statementFrom} onChange={e => setStatementFrom(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+              </label>
+              <label className="text-xs font-medium text-gray-500">
+                To date
+                <input type="date" value={statementTo} onChange={e => setStatementTo(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+              </label>
+              <button
+                type="button"
+                onClick={() => { setStatementQuery(''); setStatementFrom(''); setStatementTo(''); }}
+                className="self-end px-4 py-2 text-sm font-semibold text-indigo-600 hover:underline text-left"
+              >
+                Clear filters
+              </button>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-xl p-4">
+              <div className="flex flex-wrap justify-between gap-2">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">{statementQuery || 'All receivers'}</h3>
+                  {statementQuery && <p className="text-sm text-gray-500">Company name or GSTIN match</p>}
+                </div>
+                <p className="text-sm text-gray-500">{statementInvoices.length} invoice{statementInvoices.length === 1 ? '' : 's'}</p>
+              </div>
+              <div className="mt-4 grid grid-cols-2 lg:grid-cols-5 gap-3">
+                {[
+                  ['Subtotal', statementTotals.subtotal],
+                  ['GST', statementTotals.gst],
+                  ['Billed total', statementTotals.total],
+                  ['Received', statementTotals.received],
+                  ['Remaining', statementTotals.remaining],
+                ].map(([label, amount]) => (
+                  <div key={label as string} className="rounded-lg bg-gray-50 p-3">
+                    <p className="text-xs text-gray-500">{label}</p>
+                    <p className="mt-1 font-bold text-gray-900">{formatStatementCurrency(amount as number)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {statementInvoices.length === 0 ? (
+              <div className="bg-white rounded-xl p-12 text-center border-2 border-dashed border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">No matching invoices</h3>
+                <p className="text-gray-500 mt-1">Search by receiver company name or GSTIN.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto bg-white border border-gray-200 rounded-xl">
+                <table className="w-full table-fixed text-sm">
+                  <colgroup>
+                    <col className="statement-invoice-col" />
+                    <col className="statement-date-col" />
+                    <col className="statement-receiver-col" />
+                    <col className="statement-money-col" />
+                    <col className="statement-money-col" />
+                    <col className="statement-money-col" />
+                    <col className="statement-received-col" />
+                    <col className="statement-money-col" />
+                    <col className="no-print-status statement-status-col" />
+                  </colgroup>
+                  <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                    <tr>
+                      <th className="px-4 py-3">Invoice</th>
+                      <th className="px-4 py-3">Date</th>
+                      <th className="px-4 py-3">Receiver</th>
+                      <th className="px-4 py-3 text-right">Subtotal</th>
+                      <th className="px-4 py-3 text-right">GST</th>
+                      <th className="px-4 py-3 text-right">Total</th>
+                      <th className="px-4 py-3 text-right">Received</th>
+                      <th className="px-4 py-3 text-right">Remaining</th>
+                      <th className="no-print-status statement-status-cell px-4 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {statementInvoices.map(invoice => {
+                      const amounts = invoiceAmounts(invoice);
+                      const status = amounts.remaining < 0
+                        ? 'Overpaid'
+                        : amounts.remaining === 0
+                          ? 'Paid'
+                          : amounts.received > 0
+                            ? 'Partial'
+                            : 'Unpaid';
+                      return (
+                        <tr key={invoiceKey(invoice)}>
+                          <td className="px-4 py-3 font-semibold text-indigo-600">#{invoice.invoiceNumber}</td>
+                          <td className="px-4 py-3 text-gray-500">{invoice.date}</td>
+                          <td className="px-4 py-3">
+                            <div className="font-semibold text-gray-900">{invoice.clientName}</div>
+                            {invoice.clientGstin && <div className="text-xs text-gray-500">{invoice.clientGstin}</div>}
+                          </td>
+                          <td className="px-4 py-3 text-right">{formatStatementCurrency(amounts.subtotal)}</td>
+                          <td className="px-4 py-3 text-right">{formatStatementCurrency(amounts.gst)}</td>
+                          <td className="px-4 py-3 text-right font-semibold">{formatStatementCurrency(amounts.total)}</td>
+                          <td className="px-2 py-2 text-right align-top">
+                            <div className="space-y-1">
+                              {(invoice.receipts || []).filter(receipt => receipt.amount > 0).map(receipt => (
+                                <div key={receipt.id} className="no-print flex items-center justify-end gap-1">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={receipt.amount}
+                                    onChange={e => changeReceipt(invoice, receipt.id, { amount: Math.max(0, Number(e.target.value) || 0) })}
+                                    onBlur={() => {
+                                      if (receipt.amount <= 0) removeReceipt(invoice, receipt.id);
+                                    }}
+                                    className="w-24 px-1.5 py-1 border border-gray-200 rounded text-right"
+                                    aria-label={`Received amount for invoice ${invoice.invoiceNumber}`}
+                                  />
+                                  <input
+                                    type="date"
+                                    value={receipt.date}
+                                    onChange={e => changeReceipt(invoice, receipt.id, { date: e.target.value })}
+                                    className="w-28 px-1 py-1 border border-gray-200 rounded text-xs"
+                                    aria-label={`Receipt date for invoice ${invoice.invoiceNumber}`}
+                                  />
+                                  <button type="button" onClick={() => removeReceipt(invoice, receipt.id)} className="text-red-500 px-1" aria-label="Remove receipt">×</button>
+                                </div>
+                              ))}
+                              <span className="print-only">
+                                {formatStatementCurrency(amounts.received)}
+                                {(invoice.receipts || []).some(receipt => receipt.amount > 0) && (
+                                  <span className="block text-xs font-normal">
+                                    {(invoice.receipts || [])
+                                      .filter(receipt => receipt.amount > 0)
+                                      .map(receipt => `${receipt.date}: ${formatStatementCurrency(receipt.amount)}`)
+                                      .join(', ')}
+                                  </span>
+                                )}
+                              </span>
+                              <button type="button" onClick={() => addReceipt(invoice)} className="no-print text-xs font-semibold text-indigo-600 hover:underline">+ receipt</button>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold">{formatStatementCurrency(amounts.remaining)}</td>
+                          <td className="no-print-status statement-status-cell px-4 py-3">
+                            <span className={`rounded-full px-2 py-1 text-xs font-semibold ${status === 'Paid' ? 'bg-green-50 text-green-700' : status === 'Overpaid' ? 'bg-blue-50 text-blue-700' : status === 'Partial' ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'}`}>
+                              {status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

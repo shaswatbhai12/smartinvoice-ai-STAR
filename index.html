@@ -29,12 +29,33 @@
                 background: white;
                 margin: 0;
                 padding: 0;
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
             }
             .min-h-screen, main, .container, .flex-col {
                 min-height: 0 !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 max-width: none !important;
+            }
+            main {
+                display: block !important;
+                height: auto !important;
+                flex: none !important;
+                overflow: visible !important;
+            }
+            #root > div {
+                display: block !important;
+                height: auto !important;
+                min-height: 0 !important;
+                flex: none !important;
+                overflow: visible !important;
+            }
+            #root > div > nav,
+            #root > div > input,
+            #root > div > .no-print {
+                display: none !important;
             }
             @page {
                 size: A4 portrait;
@@ -62,6 +83,167 @@
             }
             #printable-invoice .items-spacer {
                 flex: 1 1 auto !important;
+            }
+            #printable-statement {
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                max-width: none !important;
+                width: 100% !important;
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
+                font-family: Arial, Helvetica, sans-serif !important;
+                font-size: 11pt !important;
+                line-height: 1.25 !important;
+                break-after: auto !important;
+                page-break-after: auto !important;
+                break-before: auto !important;
+                page-break-before: auto !important;
+                page-break-inside: auto !important;
+                break-inside: auto !important;
+                margin-bottom: 0 !important;
+            }
+            #printable-statement::after {
+                content: none !important;
+                display: none !important;
+            }
+            #printable-statement .space-y-6,
+            #printable-statement .space-y-4 {
+                gap: 2px !important;
+            }
+            #printable-statement .p-4 {
+                padding: 6px !important;
+            }
+            #printable-statement .mt-4 {
+                margin-top: 6px !important;
+            }
+            #printable-statement h2 {
+                font-size: 20pt !important;
+                line-height: 1.2 !important;
+                letter-spacing: 0.2pt !important;
+            }
+            #printable-statement h3 {
+                font-size: 14pt !important;
+                line-height: 1.2 !important;
+            }
+            #printable-statement .grid {
+                gap: 6px !important;
+            }
+            #printable-statement .lg\:grid-cols-5 {
+                grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+            }
+            #printable-statement .no-print {
+                display: none !important;
+            }
+            #printable-statement .no-print-status {
+                display: none !important;
+                visibility: collapse !important;
+                width: 0 !important;
+                max-width: 0 !important;
+                min-width: 0 !important;
+                padding: 0 !important;
+                border: 0 !important;
+            }
+            #printable-statement .statement-status-cell {
+                display: none !important;
+                visibility: hidden !important;
+                width: 0 !important;
+                padding: 0 !important;
+                border: 0 !important;
+            }
+            #printable-statement col.no-print-status {
+                display: none !important;
+                visibility: collapse !important;
+                width: 0 !important;
+            }
+            #printable-statement thead th:last-child,
+            #printable-statement tbody td:last-child {
+                display: none !important;
+                visibility: collapse !important;
+                width: 0 !important;
+                padding: 0 !important;
+                border: 0 !important;
+            }
+            #printable-statement table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                table-layout: fixed !important;
+                min-width: 0 !important;
+                font-size: 10pt !important;
+            }
+            #printable-statement .statement-invoice-col { width: 8%; }
+            #printable-statement .statement-date-col { width: 10%; }
+            #printable-statement .statement-receiver-col { width: 23%; }
+            #printable-statement .statement-money-col { width: 10%; }
+            #printable-statement .statement-received-col { width: 15%; }
+            #printable-statement .statement-status-col { width: 0; }
+            #printable-statement th,
+            #printable-statement td {
+                border: 1px solid #94a3b8 !important;
+                border-left: 1px solid #64748b !important;
+                border-right: 1px solid #64748b !important;
+                padding: 6px 7px !important;
+                line-height: 1.25 !important;
+                vertical-align: top !important;
+                min-width: 0 !important;
+                overflow-wrap: anywhere !important;
+                word-break: break-word !important;
+                white-space: normal !important;
+            }
+            #printable-statement thead {
+                display: table-header-group !important;
+            }
+            #printable-statement thead tr {
+                background: #e2e8f0 !important;
+                color: #0f172a !important;
+            }
+            #printable-statement thead th {
+                font-size: 9pt !important;
+                font-weight: 700 !important;
+                letter-spacing: 0.3pt !important;
+                text-transform: uppercase !important;
+                white-space: nowrap !important;
+            }
+            #printable-statement tbody tr:nth-child(even) {
+                background: #f8fafc !important;
+            }
+            #printable-statement tbody tr {
+                border-top: 1px solid #cbd5e1 !important;
+                border-bottom: 1px solid #cbd5e1 !important;
+            }
+            #printable-statement tbody tr + tr {
+                border-top: 1px solid #94a3b8 !important;
+            }
+            #printable-statement th:nth-child(n+4),
+            #printable-statement td:nth-child(n+4) {
+                font-size: 9pt !important;
+            }
+            #printable-statement td:nth-child(1),
+            #printable-statement td:nth-child(2),
+            #printable-statement td:nth-child(4),
+            #printable-statement td:nth-child(5),
+            #printable-statement td:nth-child(6),
+            #printable-statement td:nth-child(7),
+            #printable-statement td:nth-child(8),
+            #printable-statement td:nth-child(9) {
+                white-space: nowrap !important;
+                overflow-wrap: normal !important;
+                word-break: normal !important;
+            }
+            #printable-statement tr {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            #printable-statement .rounded-xl {
+                border-radius: 0 !important;
+            }
+            #printable-statement .text-xs {
+                font-size: 8.5pt !important;
+            }
+            #printable-statement > *:last-child {
+                break-after: auto !important;
+                page-break-after: auto !important;
             }
         }
     </style>

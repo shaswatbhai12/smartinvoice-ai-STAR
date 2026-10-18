@@ -4,6 +4,7 @@ GST invoice generator with login (Clerk) and a cloud database (Supabase), so you
 
 - Vendor profiles, GST invoices (CGST+SGST or IGST chosen from the client GSTIN), non-GST invoices, print / PDF
 - Receiver autocomplete: type part of a previously billed client's name and select a suggestion to fill their saved details; different saved addresses for the same receiver are shown separately, with the highest invoice number first
+- Receivables statement: search a receiver by company name or GSTIN, record multiple payments with individual dates per invoice, view billed/GST/received/remaining totals, and print or export the statement in ascending invoice-number order
 - Search saved invoices by client name, GSTIN or invoice number
 - Unlimited invoice history, with Export / Import backup
 - Installable as an app (PWA)

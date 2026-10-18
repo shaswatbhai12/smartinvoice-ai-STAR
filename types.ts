@@ -8,6 +8,12 @@ export interface InvoiceItem {
   unitPrice: number;
 }
 
+export interface InvoiceReceipt {
+  id: string;
+  amount: number;
+  date: string;
+}
+
 export interface InvoiceData {
   vendorProfileId?: string;
   isGstRegistered: boolean;
@@ -48,6 +54,8 @@ export interface InvoiceData {
   
   notes: string;
   currency: string;
+  amountReceived?: number;
+  receipts?: InvoiceReceipt[];
 }
 
 export interface VendorProfile {
@@ -102,5 +110,7 @@ export const EMPTY_INVOICE: InvoiceData = {
   sgstRate: 9,
   igstRate: 0,
   notes: 'Goods once sold will not take back.',
-  currency: 'INR'
+  currency: 'INR',
+  amountReceived: 0,
+  receipts: []
 };
