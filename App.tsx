@@ -157,6 +157,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
   const [profileDraft, setProfileDraft] = useState<Omit<VendorProfile, 'id'>>(EMPTY_PROFILE);
   const [currentInvoice, setCurrentInvoice] = useState<InvoiceData>(EMPTY_INVOICE);
   const [history, setHistory] = useState<InvoiceData[]>([]);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statementQuery, setStatementQuery] = useState('');
@@ -348,12 +349,15 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
 
   const activeProfile = profiles.find(p => p.id === activeProfileId);
   const belongsToActiveProfile = (invoice: InvoiceData) => {
-    if (invoice.vendorProfileId === activeProfileId) return true;
-    if (invoice.vendorProfileId || !activeProfile) return false;
-    const sameName = invoice.vendorName.trim().toLowerCase() === activeProfile.vendorName.trim().toLowerCase();
-    const sameGstin = !invoice.vendorGstin || !activeProfile.vendorGstin ||
-      invoice.vendorGstin.trim().toLowerCase() === activeProfile.vendorGstin.trim().toLowerCase();
-    return sameName && sameGstin;
+    if (!activeProfile) return false;
+    const normalize = (value: string | undefined) => (value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const invoiceGstin = normalize(invoice.vendorGstin);
+    const profileGstin = normalize(activeProfile.vendorGstin);
+    const invoiceName = normalize(invoice.vendorName);
+    const profileName = normalize(activeProfile.vendorName);
+    const sameGstin = Boolean(invoiceGstin && profileGstin && invoiceGstin === profileGstin);
+    const sameCompanyName = Boolean(invoiceName && profileName && invoiceName === profileName);
+    return sameGstin || sameCompanyName;
   };
   const compareInvoiceNumbers = (left: InvoiceData, right: InvoiceData) => {
     const leftNumber = Number(left.invoiceNumber);
@@ -409,6 +413,11 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
     rememberActive(id);
     applyProfile(profile, profile.lastInvoiceNumber);
     setView('editor');
+  };
+
+  const navigateTo = (nextView: 'editor' | 'history' | 'receivables' | 'profiles') => {
+    setView(nextView);
+    setMobileNavOpen(false);
   };
 
   const saveProfile = () => {
@@ -648,7 +657,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen overflow-x-hidden flex flex-col">
       {showProfileForm && (
         <ProfileFormModal
           profileDraft={profileDraft}
@@ -687,11 +696,13 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                 </select>
               )}
             </div>
-            <div className="flex w-full flex-wrap items-center justify-end gap-1 sm:w-auto sm:gap-2">
-              <button onClick={() => setView('editor')} className={`px-3 py-2 text-sm font-medium rounded-md transition ${view === 'editor' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>Generator</button>
-              <button onClick={() => setView('history')} className={`px-3 py-2 text-sm font-medium rounded-md transition ${view === 'history' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>History ({profileHistory.length})</button>
-              <button onClick={() => setView('receivables')} className={`px-3 py-2 text-sm font-medium rounded-md transition ${view === 'receivables' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>Receivables</button>
-              <button onClick={() => setView('profiles')} className={`px-3 py-2 text-sm font-medium rounded-md transition ${view === 'profiles' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>Profiles</button>
+            <div className="flex items-center gap-2">
+              <div className="hidden items-center gap-1 sm:flex sm:gap-2">
+                <button onClick={() => navigateTo('editor')} className={`px-3 py-2 text-sm font-medium rounded-md transition ${view === 'editor' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>Generator</button>
+                <button onClick={() => navigateTo('history')} className={`px-3 py-2 text-sm font-medium rounded-md transition ${view === 'history' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>History ({profileHistory.length})</button>
+                <button onClick={() => navigateTo('receivables')} className={`px-3 py-2 text-sm font-medium rounded-md transition ${view === 'receivables' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>Receivables</button>
+                <button onClick={() => navigateTo('profiles')} className={`px-3 py-2 text-sm font-medium rounded-md transition ${view === 'profiles' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700'}`}>Profiles</button>
+              </div>
               {sync && (
                 <span className={`${syncStatus === 'error' ? 'inline bg-red-50 text-red-600' : 'hidden sm:inline bg-gray-100 text-gray-500'} text-xs font-medium px-2 py-1 rounded-full`}>
                   {syncStatus === 'saving' && 'Saving…'}
@@ -702,8 +713,53 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                 </span>
               )}
               {accountSlot && <div className="ml-1 flex items-center">{accountSlot}</div>}
+              <button
+                type="button"
+                aria-label={mobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                aria-expanded={mobileNavOpen}
+                onClick={() => setMobileNavOpen(open => !open)}
+                className="inline-flex items-center justify-center rounded-md border border-gray-200 p-2 text-gray-600 hover:bg-gray-50 sm:hidden"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {mobileNavOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 6l12 12M18 6L6 18" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
             </div>
           </div>
+          {mobileNavOpen && (
+            <div className="border-t border-gray-100 py-3 sm:hidden">
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  ['editor', 'Generator'],
+                  ['history', `History (${profileHistory.length})`],
+                  ['receivables', 'Receivables'],
+                  ['profiles', 'Profiles'],
+                ] as const).map(([nextView, label]) => (
+                  <button
+                    key={nextView}
+                    type="button"
+                    onClick={() => navigateTo(nextView)}
+                    className={`rounded-md px-3 py-2.5 text-left text-sm font-medium transition ${view === nextView ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {sync && (
+                <div className={`mt-3 rounded-md px-3 py-2 text-xs ${syncStatus === 'error' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-500'}`}>
+                  {syncStatus === 'saving' && 'Saving…'}
+                  {syncStatus === 'idle' && 'Saved to cloud'}
+                  {syncStatus === 'error' && (
+                    <>Not saved <button onClick={retrySync} className="ml-1 font-semibold underline">Retry</button></>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </nav>
 
