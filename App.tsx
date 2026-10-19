@@ -573,9 +573,16 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
           <title>${title.replace(/[<>&"]/g, '')}</title>
           ${styles}
           <style>
-            @page { size: A4 landscape; margin: 6mm; }
+            @page { size: A4 portrait; margin: 5mm; }
             html, body { margin: 0; padding: 0; background: white; }
             body { width: 100%; overflow: visible; }
+            #printable-statement { width: 100% !important; font-size: 8pt !important; line-height: 1.1 !important; }
+            #printable-statement .receivables-mobile-cards { display: none !important; }
+            #printable-statement .receivables-desktop-table { display: block !important; overflow: visible !important; }
+            #printable-statement table { width: 100% !important; font-size: 7.5pt !important; }
+            #printable-statement th, #printable-statement td { padding: 3px 4px !important; line-height: 1.1 !important; }
+            #printable-statement h2 { font-size: 14pt !important; margin: 0 0 3px !important; }
+            #printable-statement h3 { font-size: 10pt !important; }
           </style>
         </head>
         <body>${statementCopy.outerHTML}</body>
@@ -955,7 +962,8 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                 <p className="text-gray-500 mt-1">Search by receiver company name or GSTIN.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto bg-white border border-gray-200 rounded-xl">
+              <>
+              <div className="receivables-desktop-table hidden overflow-x-auto bg-white border border-gray-200 rounded-xl md:block">
                 <table className="w-full table-fixed text-sm">
                   <colgroup>
                     <col className="statement-invoice-col" />
@@ -1055,6 +1063,77 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                   </tbody>
                 </table>
               </div>
+              <div className="receivables-mobile-cards space-y-3 md:hidden">
+                {statementInvoices.map(invoice => {
+                  const amounts = invoiceAmounts(invoice);
+                  const status = amounts.remaining < 0
+                    ? 'Overpaid'
+                    : amounts.remaining === 0
+                      ? 'Paid'
+                      : amounts.received > 0
+                        ? 'Partial'
+                        : 'Unpaid';
+                  return (
+                    <article key={invoiceKey(invoice)} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3">
+                        <div className="min-w-0">
+                          <p className="font-bold text-indigo-600">#{invoice.invoiceNumber}</p>
+                          <h3 className="mt-1 break-words font-semibold text-gray-900">{invoice.clientName || 'Unknown receiver'}</h3>
+                          {invoice.clientGstin && <p className="break-all text-xs text-gray-500">{invoice.clientGstin}</p>}
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-xs text-gray-500">{invoice.date}</p>
+                          <span className={`mt-1 inline-block rounded-full px-2 py-1 text-xs font-semibold ${status === 'Paid' ? 'bg-green-50 text-green-700' : status === 'Overpaid' ? 'bg-blue-50 text-blue-700' : status === 'Partial' ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'}`}>
+                            {status}
+                          </span>
+                        </div>
+                      </div>
+                      <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                        <div><dt className="text-xs text-gray-500">Subtotal</dt><dd className="font-semibold">{formatStatementCurrency(amounts.subtotal)}</dd></div>
+                        <div><dt className="text-xs text-gray-500">GST</dt><dd className="font-semibold">{formatStatementCurrency(amounts.gst)}</dd></div>
+                        <div><dt className="text-xs text-gray-500">Billed total</dt><dd className="font-semibold">{formatStatementCurrency(amounts.total)}</dd></div>
+                        <div><dt className="text-xs text-gray-500">Remaining</dt><dd className="font-semibold">{formatStatementCurrency(amounts.remaining)}</dd></div>
+                      </dl>
+                      <div className="mt-3 border-t border-gray-100 pt-3">
+                        <p className="text-xs font-medium text-gray-500">Received</p>
+                        {(invoice.receipts || []).map(receipt => (
+                          <div key={receipt.id} className="no-print mt-2 flex items-center gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={receipt.amount}
+                              onChange={e => changeReceipt(invoice, receipt.id, { amount: Math.max(0, Number(e.target.value) || 0) })}
+                              onBlur={() => { if (receipt.amount <= 0) removeReceipt(invoice, receipt.id); }}
+                              className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-2 text-right text-sm"
+                              aria-label={`Received amount for invoice ${invoice.invoiceNumber}`}
+                            />
+                            <input
+                              type="date"
+                              value={receipt.date}
+                              onChange={e => changeReceipt(invoice, receipt.id, { date: e.target.value })}
+                              className="w-[8.5rem] rounded border border-gray-200 px-2 py-2 text-xs"
+                              aria-label={`Receipt date for invoice ${invoice.invoiceNumber}`}
+                            />
+                            <button type="button" onClick={() => removeReceipt(invoice, receipt.id)} className="px-1 text-lg text-red-500" aria-label="Remove receipt">×</button>
+                          </div>
+                        ))}
+                        <p className="mt-2 font-semibold text-gray-900">{formatStatementCurrency(amounts.received)}</p>
+                        {(invoice.receipts || []).some(receipt => receipt.amount > 0) && (
+                          <p className="print-only text-xs font-normal">
+                            {(invoice.receipts || [])
+                              .filter(receipt => receipt.amount > 0)
+                              .map(receipt => `${receipt.date}: ${formatStatementCurrency(receipt.amount)}`)
+                              .join(', ')}
+                          </p>
+                        )}
+                        <button type="button" onClick={() => addReceipt(invoice)} className="no-print mt-2 text-xs font-semibold text-indigo-600 hover:underline">+ receipt</button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              </>
             )}
           </div>
         )}

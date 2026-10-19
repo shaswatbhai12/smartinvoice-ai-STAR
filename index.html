@@ -62,6 +62,10 @@
                 size: A4 portrait;
                 margin: 10mm;
             }
+            @page receivables {
+                size: A4 portrait;
+                margin: 5mm;
+            }
             #printable-invoice {
                 width: 190mm !important;
                 height: 277mm !important;
@@ -86,6 +90,7 @@
                 flex: 1 1 auto !important;
             }
             #printable-statement {
+                page: receivables;
                 background: white !important;
                 padding: 0 !important;
                 margin: 0 !important;
@@ -95,8 +100,8 @@
                 min-height: 0 !important;
                 overflow: visible !important;
                 font-family: Arial, Helvetica, sans-serif !important;
-                font-size: 11pt !important;
-                line-height: 1.25 !important;
+                font-size: 8pt !important;
+                line-height: 1.1 !important;
                 break-after: auto !important;
                 page-break-after: auto !important;
                 break-before: auto !important;
@@ -104,6 +109,13 @@
                 page-break-inside: auto !important;
                 break-inside: auto !important;
                 margin-bottom: 0 !important;
+            }
+            #printable-statement .receivables-mobile-cards {
+                display: none !important;
+            }
+            #printable-statement .receivables-desktop-table {
+                display: block !important;
+                overflow: visible !important;
             }
             #printable-statement::after {
                 content: none !important;
@@ -171,7 +183,7 @@
                 border-collapse: collapse !important;
                 table-layout: fixed !important;
                 min-width: 0 !important;
-                font-size: 10pt !important;
+                font-size: 7.5pt !important;
             }
             #printable-statement .statement-invoice-col { width: 8%; }
             #printable-statement .statement-date-col { width: 10%; }
@@ -184,8 +196,8 @@
                 border: 1px solid #94a3b8 !important;
                 border-left: 1px solid #64748b !important;
                 border-right: 1px solid #64748b !important;
-                padding: 6px 7px !important;
-                line-height: 1.25 !important;
+                padding: 3px 4px !important;
+                line-height: 1.1 !important;
                 vertical-align: top !important;
                 min-width: 0 !important;
                 overflow-wrap: anywhere !important;
