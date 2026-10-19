@@ -500,7 +500,57 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
     persistHistory([currentInvoice, ...filtered]);
     const prev = document.title;
     document.title = `${currentInvoice.clientName || 'Invoice'} - ${currentInvoice.invoiceNumber}`.trim();
-    window.print();
+    const invoice = document.getElementById('printable-invoice');
+    if (!invoice) {
+      alert('Could not prepare the invoice for printing.');
+      document.title = prev;
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=1000,height=800');
+    if (!printWindow) {
+      alert('Please allow pop-ups to print the invoice.');
+      document.title = prev;
+      return;
+    }
+
+    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(style => style.outerHTML)
+      .join('');
+    const invoiceCopy = invoice.cloneNode(true) as HTMLElement;
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>${document.title.replace(/[<>&"]/g, '')}</title>
+          ${styles}
+          <style>
+            @page { size: A4 portrait; margin: 10mm; }
+            html, body { margin: 0; padding: 0; background: white; }
+            body { width: 190mm; overflow: hidden; }
+            #printable-invoice {
+              width: 190mm !important;
+              height: 277mm !important;
+              min-height: 277mm !important;
+              max-height: 277mm !important;
+              margin: 0 auto !important;
+              box-sizing: border-box !important;
+              overflow: hidden !important;
+              page-break-after: avoid !important;
+              break-inside: avoid !important;
+              zoom: 1;
+            }
+          </style>
+        </head>
+        <body>${invoiceCopy.outerHTML}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.onafterprint = () => printWindow.close();
+    printWindow.onload = () => printWindow.print();
     document.title = prev;
   };
 
@@ -576,6 +626,18 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
             @page { size: A4 portrait; margin: 5mm; }
             html, body { margin: 0; padding: 0; background: white; }
             body { width: 100%; overflow: visible; }
+            #printable-invoice {
+              width: 190mm !important;
+              height: 277mm !important;
+              min-height: 277mm !important;
+              max-height: 277mm !important;
+              margin: 0 auto !important;
+              overflow: hidden !important;
+              page-break-after: avoid !important;
+              break-after: avoid-page !important;
+              box-sizing: border-box !important;
+              zoom: 0.84;
+            }
             #printable-statement { width: 100% !important; font-size: 8pt !important; line-height: 1.1 !important; }
             #printable-statement .receivables-mobile-cards { display: none !important; }
             #printable-statement .receivables-desktop-table { display: block !important; overflow: visible !important; }
@@ -803,7 +865,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                   </button>
                 </div>
               </div>
-              <div className="overflow-x-auto pb-2">
+              <div className="invoice-preview-shell w-full overflow-hidden pb-2">
                 <InvoicePreview data={currentInvoice} />
               </div>
             </div>

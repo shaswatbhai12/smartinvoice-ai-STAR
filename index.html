@@ -19,6 +19,54 @@
             background-color: #f9fafb;
             overflow-x: hidden;
         }
+        .invoice-preview-shell {
+            display: flex;
+            justify-content: center;
+        }
+        #printable-invoice {
+            width: 100%;
+            max-width: 190mm;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+        @media screen and (max-width: 640px) {
+            .invoice-preview-shell {
+                display: block;
+            }
+            #printable-invoice {
+                font-size: 9px !important;
+            }
+            #printable-invoice h1 {
+                font-size: 14px !important;
+                white-space: normal !important;
+                overflow-wrap: anywhere !important;
+            }
+            #printable-invoice h1 + p {
+                font-size: 9px !important;
+            }
+            #printable-invoice .text-\[18px\] {
+                font-size: 14px !important;
+            }
+            #printable-invoice .text-\[16px\] {
+                font-size: 13px !important;
+            }
+            #printable-invoice .text-\[15px\] {
+                font-size: 12px !important;
+            }
+            #printable-invoice .text-\[13px\] {
+                font-size: 11px !important;
+            }
+            #printable-invoice .w-36 {
+                width: 6.5rem !important;
+            }
+            #printable-invoice .w-28 {
+                width: 5rem !important;
+            }
+            #printable-invoice .px-3 {
+                padding-left: 6px !important;
+                padding-right: 6px !important;
+            }
+        }
         @media print {
             .no-print {
                 display: none !important;
@@ -69,12 +117,17 @@
             #printable-invoice {
                 width: 190mm !important;
                 height: 277mm !important;
+                min-height: 277mm !important;
+                max-height: 277mm !important;
                 margin: 0 auto !important;
                 padding: 0 !important;
                 border: 1px solid black !important;
                 border-radius: 0 !important;
                 box-shadow: none !important;
                 overflow: hidden !important;
+                box-sizing: border-box !important;
+                page-break-after: avoid !important;
+                break-after: avoid-page !important;
                 display: flex !important;
                 flex-direction: column !important;
                 font-size: 10pt !important;
