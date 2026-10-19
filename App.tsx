@@ -623,9 +623,9 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
           <title>${title.replace(/[<>&"]/g, '')}</title>
           ${styles}
           <style>
-            @page { size: A4 portrait; margin: 5mm; }
+            @page { size: A4 landscape; margin: 6mm; }
             html, body { margin: 0; padding: 0; background: white; }
-            body { width: 100%; overflow: visible; }
+            body { width: 285mm; overflow: visible; }
             #printable-invoice {
               width: 190mm !important;
               height: 277mm !important;
@@ -638,13 +638,18 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
               box-sizing: border-box !important;
               zoom: 0.84;
             }
-            #printable-statement { width: 100% !important; font-size: 8pt !important; line-height: 1.1 !important; }
+            #printable-statement { width: 100% !important; font-size: 8pt !important; line-height: 1.05 !important; }
             #printable-statement .receivables-mobile-cards { display: none !important; }
             #printable-statement .receivables-desktop-table { display: block !important; overflow: visible !important; }
-            #printable-statement table { width: 100% !important; font-size: 7.5pt !important; }
-            #printable-statement th, #printable-statement td { padding: 3px 4px !important; line-height: 1.1 !important; }
-            #printable-statement h2 { font-size: 14pt !important; margin: 0 0 3px !important; }
-            #printable-statement h3 { font-size: 10pt !important; }
+            #printable-statement table { width: 100% !important; font-size: 7pt !important; }
+            #printable-statement th, #printable-statement td { padding: 2px 3px !important; line-height: 1.05 !important; }
+            #printable-statement h2 { font-size: 14pt !important; margin: 0 0 2px !important; }
+            #printable-statement h3 { font-size: 9pt !important; }
+            #printable-statement .p-4 { padding: 4px !important; }
+            #printable-statement .mt-4 { margin-top: 3px !important; }
+            #printable-statement .grid { gap: 3px !important; }
+            #printable-statement .text-xs { font-size: 7pt !important; }
+            #printable-statement td { overflow-wrap: normal !important; word-break: normal !important; }
           </style>
         </head>
         <body>${statementCopy.outerHTML}</body>
