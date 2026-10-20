@@ -929,7 +929,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                   </button>
                 </div>
               </div>
-              <div className="invoice-preview-shell w-full overflow-hidden pb-2">
+              <div className="invoice-preview-shell w-full overflow-x-auto pb-2">
                 <InvoicePreview data={currentInvoice} />
               </div>
             </div>

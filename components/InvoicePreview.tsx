@@ -118,18 +118,18 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data }) => {
       <div className="items-wrapper" style={{flex: '1 1 auto', display: 'flex', flexDirection: 'column', borderBottom: '1px solid black'}}>
         <table className="invoice-items-table w-full text-center border-collapse table-fixed">
           <colgroup>
-            <col className="invoice-col-sno" />
-            <col className="invoice-col-description" />
-            {isGstRegistered && <col className="invoice-col-hsn" />}
-            <col className="invoice-col-qty" />
-            <col className="invoice-col-rate" />
-            <col className="invoice-col-amount" />
+            <col className="invoice-col-sno" style={{ width: isGstRegistered ? '44px' : '50px' }} />
+            <col className="invoice-col-description" style={{ width: isGstRegistered ? '220px' : '280px' }} />
+            {isGstRegistered && <col className="invoice-col-hsn" style={{ width: '90px' }} />}
+            <col className="invoice-col-qty" style={{ width: isGstRegistered ? '55px' : '60px' }} />
+            <col className="invoice-col-rate" style={{ width: isGstRegistered ? '110px' : '120px' }} />
+            <col className="invoice-col-amount" style={{ width: isGstRegistered ? '121px' : '130px' }} />
           </colgroup>
           <thead>
             <tr className="border-b border-black">
               <th className="border-r border-black py-2 w-14 font-bold uppercase text-[11px]">S No.</th>
-              <th className="border-r border-black py-2 text-left px-3 font-bold uppercase text-[11px]">DESCRIPTION OF GOODS</th>
-              {isGstRegistered && <th className="border-r border-black py-2 w-20 font-bold uppercase text-[11px]">HSN CODE</th>}
+              <th className="invoice-description-header border-r border-black py-2 text-left px-3 font-bold uppercase text-[11px]">DESCRIPTION OF GOODS</th>
+              {isGstRegistered && <th className="invoice-hsn-header border-r border-black py-2 w-20 font-bold uppercase text-[11px]">HSN CODE</th>}
               <th className="border-r border-black py-2 w-16 font-bold uppercase text-[11px]">QTY.</th>
               <th className="border-r border-black py-2 w-24 font-bold uppercase text-[11px]">RATE</th>
               <th className="py-2 w-28 font-bold uppercase text-[11px]">AMOUNT</th>
@@ -139,8 +139,8 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data }) => {
             {data.items.map((item, index) => (
               <tr key={item.id} className="border-b border-gray-200">
                 <td className="border-r border-black py-2 align-top">{index + 1}</td>
-                <td className="border-r border-black py-2 text-left px-3 align-top font-medium">{item.description}</td>
-                {isGstRegistered && <td className="border-r border-black py-2 align-top">{item.hsnCode}</td>}
+                <td className="invoice-description-cell border-r border-black py-2 text-left px-3 align-top font-medium">{item.description}</td>
+                {isGstRegistered && <td className="invoice-hsn-cell border-r border-black py-2 px-2 align-top">{item.hsnCode}</td>}
                 <td className="border-r border-black py-2 align-top">{item.quantity}{item.unit ? ` ${item.unit}` : ''}</td>
                 <td className="border-r border-black py-2 align-top">{formatCurrency(item.unitPrice)}</td>
                 <td className="py-2 text-right pr-3 font-bold align-top">{formatCurrency(item.quantity * item.unitPrice)}</td>
@@ -149,7 +149,7 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data }) => {
           </tbody>
         </table>
         {/* Spacer with column lines to fill empty space */}
-        <div className={`items-spacer invoice-items-spacer ${isGstRegistered ? 'invoice-items-spacer-gst' : 'invoice-items-spacer-non-gst'}`} style={{flex: '1 1 auto', minHeight: '20px', display: 'grid', gridTemplateColumns: isGstRegistered ? '56px 1fr 80px 64px 96px 112px' : '56px 1fr 64px 96px 112px'}}>
+        <div className={`items-spacer invoice-items-spacer ${isGstRegistered ? 'invoice-items-spacer-gst' : 'invoice-items-spacer-non-gst'}`} style={{flex: '1 1 auto', minHeight: '20px', minWidth: isGstRegistered ? '640px' : '640px', display: 'grid', gridTemplateColumns: isGstRegistered ? '44px 220px 90px 55px 110px 121px' : '50px 280px 60px 120px 130px'}}>
           <div className="border-r border-black"></div>
           <div className="border-r border-black"></div>
           {isGstRegistered && <div className="border-r border-black"></div>}
