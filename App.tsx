@@ -700,8 +700,27 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
             #printable-statement td { overflow-wrap: normal !important; word-break: normal !important; }
             #printable-statement td:nth-child(2) { font-weight: 700 !important; }
             #printable-statement td:nth-child(7) { white-space: normal !important; }
-            #printable-statement .statement-received-print { display: block !important; white-space: normal !important; }
-            #printable-statement .statement-receipt-line { display: block !important; white-space: nowrap !important; }
+            #printable-statement .statement-received-print {
+              display: block !important;
+              max-width: 100% !important;
+              white-space: normal !important;
+              overflow-wrap: anywhere !important;
+              word-break: break-word !important;
+            }
+            #printable-statement .statement-received-total {
+              font-size: 8pt !important;
+              line-height: 1.15 !important;
+              overflow-wrap: anywhere !important;
+              word-break: break-word !important;
+            }
+            #printable-statement .statement-receipt-line {
+              display: block !important;
+              white-space: normal !important;
+              overflow-wrap: anywhere !important;
+              word-break: break-word !important;
+              font-size: 7pt !important;
+              line-height: 1.15 !important;
+            }
             #printable-statement col.statement-invoice-col { width: 7% !important; }
             #printable-statement col.statement-date-col { width: 9% !important; }
             #printable-statement col.statement-receiver-col { width: 20% !important; }
@@ -1147,7 +1166,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                           <td className="px-4 py-3 text-right">{formatStatementCurrency(amounts.subtotal)}</td>
                           <td className="px-4 py-3 text-right">{formatStatementCurrency(amounts.gst)}</td>
                           <td className="px-4 py-3 text-right font-semibold">{formatStatementCurrency(amounts.total)}</td>
-                          <td className="px-2 py-2 text-right align-top">
+                          <td className="statement-received-cell px-2 py-2 text-right align-top">
                             <div className="space-y-1">
                               {(invoice.receipts || []).map(receipt => (
                                 <div key={receipt.id} className="no-print flex items-center justify-end gap-1">
@@ -1175,7 +1194,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                                 </div>
                               ))}
                               <span className="print-only statement-received-print">
-                                <span className="block font-semibold">Total: {formatStatementCurrency(amounts.received)}</span>
+                              <span className="statement-received-total block font-semibold">Total: {formatStatementCurrency(amounts.received)}</span>
                                 {(invoice.receipts || [])
                                   .filter(receipt => receipt.amount > 0)
                                   .map(receipt => (
