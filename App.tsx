@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { InvoiceData, InvoiceReceipt, EMPTY_INVOICE, VendorProfile } from './types';
+import { InvoiceData, InvoiceReceipt, EMPTY_INVOICE, PaymentStatus, VendorProfile } from './types';
 import InvoiceForm from './components/InvoiceForm';
 import InvoicePreview from './components/InvoicePreview';
 import { CloudSync, SyncStatus, readLegacyLocal } from './services/cloudSync';
@@ -39,6 +39,7 @@ const invoiceAmounts = (invoice: InvoiceData) => {
 };
 
 const invoicePaymentStatus = (invoice: InvoiceData) => {
+  if (invoice.paymentStatusOverride) return invoice.paymentStatusOverride;
   const { received, remaining } = invoiceAmounts(invoice);
   if (remaining < 0) return 'Overpaid';
   if (remaining === 0) return 'Paid';
@@ -46,7 +47,29 @@ const invoicePaymentStatus = (invoice: InvoiceData) => {
   return 'Unpaid';
 };
 
+const paymentStatusClass = (status: PaymentStatus) =>
+  status === 'Paid'
+    ? 'bg-green-50 text-green-700'
+    : status === 'Overpaid'
+      ? 'bg-blue-50 text-blue-700'
+      : status === 'Partial'
+        ? 'bg-yellow-50 text-yellow-700'
+        : 'bg-red-50 text-red-700';
+
+const paymentStatusOptions: Array<{ value: PaymentStatus | ''; label: string }> = [
+  { value: '', label: 'Automatic' },
+  { value: 'Unpaid', label: 'Unpaid' },
+  { value: 'Partial', label: 'Partial' },
+  { value: 'Paid', label: 'Paid' },
+  { value: 'Overpaid', label: 'Overpaid' },
+];
+
 const receiptDate = () => new Date().toISOString().split('T')[0];
+
+const formatDisplayDate = (value: string) => {
+  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : value;
+};
 
 interface ProfileFormModalProps {
   profileDraft: Omit<VendorProfile, 'id'>;
@@ -585,6 +608,14 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
     ));
   };
 
+  const updateInvoiceStatus = (invoice: InvoiceData, override: PaymentStatus | '') => {
+    persistHistory(history.map(item =>
+      invoiceKey(item) === invoiceKey(invoice)
+        ? { ...item, paymentStatusOverride: override || undefined }
+        : item
+    ));
+  };
+
   const handleStatementPrint = () => {
     const statement = document.getElementById('printable-statement');
     if (!statement) {
@@ -638,18 +669,46 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
               box-sizing: border-box !important;
               zoom: 0.84;
             }
-            #printable-statement { width: 100% !important; font-size: 8pt !important; line-height: 1.05 !important; }
+            #printable-statement { width: 100% !important; font-size: 11pt !important; line-height: 1.2 !important; }
             #printable-statement .receivables-mobile-cards { display: none !important; }
             #printable-statement .receivables-desktop-table { display: block !important; overflow: visible !important; }
-            #printable-statement table { width: 100% !important; font-size: 7pt !important; }
-            #printable-statement th, #printable-statement td { padding: 2px 3px !important; line-height: 1.05 !important; }
-            #printable-statement h2 { font-size: 14pt !important; margin: 0 0 2px !important; }
-            #printable-statement h3 { font-size: 9pt !important; }
+            #printable-statement table { width: 100% !important; font-size: 10.5pt !important; }
+            #printable-statement th, #printable-statement td { padding: 5px 6px !important; line-height: 1.2 !important; }
+            #printable-statement h2 { font-size: 18pt !important; margin: 0 0 4px !important; }
+            #printable-statement h3 { font-size: 13pt !important; }
             #printable-statement .p-4 { padding: 4px !important; }
             #printable-statement .mt-4 { margin-top: 3px !important; }
             #printable-statement .grid { gap: 3px !important; }
-            #printable-statement .text-xs { font-size: 7pt !important; }
+            #printable-statement .text-xs { font-size: 10pt !important; }
             #printable-statement td { overflow-wrap: normal !important; word-break: normal !important; }
+            #printable-statement td:nth-child(2) { font-weight: 700 !important; }
+            #printable-statement td:nth-child(7) { white-space: normal !important; }
+            #printable-statement .statement-received-print { display: block !important; white-space: normal !important; }
+            #printable-statement .statement-receipt-line { display: block !important; white-space: nowrap !important; }
+            #printable-statement col.statement-invoice-col { width: 7% !important; }
+            #printable-statement col.statement-date-col { width: 9% !important; }
+            #printable-statement col.statement-receiver-col { width: 20% !important; }
+            #printable-statement col.statement-money-col { width: 9% !important; }
+            #printable-statement col.statement-received-col { width: 13% !important; }
+            #printable-statement col.statement-status-col { width: 7% !important; display: table-column !important; visibility: visible !important; }
+            #printable-statement .statement-status-cell,
+            #printable-statement .no-print-status {
+              display: table-cell !important;
+              visibility: visible !important;
+              width: auto !important;
+              max-width: none !important;
+              min-width: 0 !important;
+              padding: 5px 6px !important;
+              border: 1px solid #64748b !important;
+            }
+            #printable-statement thead th:last-child,
+            #printable-statement tbody td:last-child {
+              display: table-cell !important;
+              visibility: visible !important;
+              width: auto !important;
+              padding: 5px 6px !important;
+              border: 1px solid #64748b !important;
+            }
           </style>
         </head>
         <body>${statementCopy.outerHTML}</body>
@@ -928,11 +987,11 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                       <div className="text-sm font-bold text-indigo-600">#{inv.invoiceNumber}</div>
                       <div className="flex items-center gap-2">
                         <div className="flex flex-col items-end gap-2">
-                          <div className="text-xs text-gray-400 font-medium">{inv.date}</div>
+                          <div className="text-xs text-gray-400 font-medium">{formatDisplayDate(inv.date)}</div>
                           {(() => {
                             const status = invoicePaymentStatus(inv);
                             return (
-                              <span className={`rounded-full px-2 py-1 text-xs font-semibold ${status === 'Paid' ? 'bg-green-50 text-green-700' : status === 'Overpaid' ? 'bg-blue-50 text-blue-700' : status === 'Partial' ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'}`}>
+                              <span className={`rounded-full px-2 py-1 text-xs font-semibold ${paymentStatusClass(status)}`}>
                                 {status}
                               </span>
                             );
@@ -1059,17 +1118,11 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                   <tbody className="divide-y divide-gray-100">
                     {statementInvoices.map(invoice => {
                       const amounts = invoiceAmounts(invoice);
-                      const status = amounts.remaining < 0
-                        ? 'Overpaid'
-                        : amounts.remaining === 0
-                          ? 'Paid'
-                          : amounts.received > 0
-                            ? 'Partial'
-                            : 'Unpaid';
+                      const status = invoicePaymentStatus(invoice);
                       return (
                         <tr key={invoiceKey(invoice)}>
                           <td className="px-4 py-3 font-semibold text-indigo-600">#{invoice.invoiceNumber}</td>
-                          <td className="px-4 py-3 text-gray-500">{invoice.date}</td>
+                          <td className="px-4 py-3 font-bold text-gray-700">{formatDisplayDate(invoice.date)}</td>
                           <td className="px-4 py-3">
                             <div className="font-semibold text-gray-900">{invoice.clientName}</div>
                             {invoice.clientGstin && <div className="text-xs text-gray-500">{invoice.clientGstin}</div>}
@@ -1104,23 +1157,30 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                                   <button type="button" onClick={() => removeReceipt(invoice, receipt.id)} className="text-red-500 px-1" aria-label="Remove receipt">×</button>
                                 </div>
                               ))}
-                              <span className="print-only">
-                                {formatStatementCurrency(amounts.received)}
-                                {(invoice.receipts || []).some(receipt => receipt.amount > 0) && (
-                                  <span className="block text-xs font-normal">
-                                    {(invoice.receipts || [])
-                                      .filter(receipt => receipt.amount > 0)
-                                      .map(receipt => `${receipt.date}: ${formatStatementCurrency(receipt.amount)}`)
-                                      .join(', ')}
-                                  </span>
-                                )}
+                              <span className="print-only statement-received-print">
+                                <span className="block font-semibold">Total: {formatStatementCurrency(amounts.received)}</span>
+                                {(invoice.receipts || [])
+                                  .filter(receipt => receipt.amount > 0)
+                                  .map(receipt => (
+                                    <span className="statement-receipt-line block text-xs font-normal" key={`print-${receipt.id}`}>
+                                      {formatDisplayDate(receipt.date)}: {formatStatementCurrency(receipt.amount)}
+                                    </span>
+                                  ))}
                               </span>
                               <button type="button" onClick={() => addReceipt(invoice)} className="no-print text-xs font-semibold text-indigo-600 hover:underline">+ receipt</button>
                             </div>
                           </td>
                           <td className="px-4 py-3 text-right font-semibold">{formatStatementCurrency(amounts.remaining)}</td>
                           <td className="no-print-status statement-status-cell px-4 py-3">
-                            <span className={`rounded-full px-2 py-1 text-xs font-semibold ${status === 'Paid' ? 'bg-green-50 text-green-700' : status === 'Overpaid' ? 'bg-blue-50 text-blue-700' : status === 'Partial' ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'}`}>
+                            <select
+                              className="no-print w-full rounded border border-gray-200 px-1 py-1 text-xs"
+                              value={invoice.paymentStatusOverride || ''}
+                              onChange={event => updateInvoiceStatus(invoice, event.target.value as PaymentStatus | '')}
+                              aria-label={`Payment status for invoice ${invoice.invoiceNumber}`}
+                            >
+                              {paymentStatusOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                            </select>
+                            <span className={`print-only rounded-full px-2 py-1 text-xs font-semibold ${paymentStatusClass(status)}`}>
                               {status}
                             </span>
                           </td>
@@ -1133,13 +1193,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
               <div className="receivables-mobile-cards space-y-3 md:hidden">
                 {statementInvoices.map(invoice => {
                   const amounts = invoiceAmounts(invoice);
-                  const status = amounts.remaining < 0
-                    ? 'Overpaid'
-                    : amounts.remaining === 0
-                      ? 'Paid'
-                      : amounts.received > 0
-                        ? 'Partial'
-                        : 'Unpaid';
+                  const status = invoicePaymentStatus(invoice);
                   return (
                     <article key={invoiceKey(invoice)} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                       <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3">
@@ -1149,8 +1203,16 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                           {invoice.clientGstin && <p className="break-all text-xs text-gray-500">{invoice.clientGstin}</p>}
                         </div>
                         <div className="shrink-0 text-right">
-                          <p className="text-xs text-gray-500">{invoice.date}</p>
-                          <span className={`mt-1 inline-block rounded-full px-2 py-1 text-xs font-semibold ${status === 'Paid' ? 'bg-green-50 text-green-700' : status === 'Overpaid' ? 'bg-blue-50 text-blue-700' : status === 'Partial' ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'}`}>
+                          <p className="text-xs font-bold text-gray-700">{formatDisplayDate(invoice.date)}</p>
+                          <select
+                            className="no-print mt-1 max-w-[7rem] rounded border border-gray-200 px-1 py-1 text-xs"
+                            value={invoice.paymentStatusOverride || ''}
+                            onChange={event => updateInvoiceStatus(invoice, event.target.value as PaymentStatus | '')}
+                            aria-label={`Payment status for invoice ${invoice.invoiceNumber}`}
+                          >
+                            {paymentStatusOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                          </select>
+                          <span className={`print-only mt-1 inline-block rounded-full px-2 py-1 text-xs font-semibold ${paymentStatusClass(status)}`}>
                             {status}
                           </span>
                         </div>
@@ -1190,7 +1252,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                           <p className="print-only text-xs font-normal">
                             {(invoice.receipts || [])
                               .filter(receipt => receipt.amount > 0)
-                              .map(receipt => `${receipt.date}: ${formatStatementCurrency(receipt.amount)}`)
+                              .map(receipt => `${formatDisplayDate(receipt.date)}: ${formatStatementCurrency(receipt.amount)}`)
                               .join(', ')}
                           </p>
                         )}

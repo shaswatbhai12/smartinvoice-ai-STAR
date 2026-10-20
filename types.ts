@@ -14,6 +14,8 @@ export interface InvoiceReceipt {
   date: string;
 }
 
+export type PaymentStatus = 'Unpaid' | 'Partial' | 'Paid' | 'Overpaid';
+
 export interface InvoiceData {
   vendorProfileId?: string;
   isGstRegistered: boolean;
@@ -56,6 +58,7 @@ export interface InvoiceData {
   currency: string;
   amountReceived?: number;
   receipts?: InvoiceReceipt[];
+  paymentStatusOverride?: PaymentStatus;
 }
 
 export interface VendorProfile {

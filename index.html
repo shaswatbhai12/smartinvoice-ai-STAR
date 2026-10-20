@@ -66,6 +66,47 @@
                 padding-left: 6px !important;
                 padding-right: 6px !important;
             }
+            #printable-invoice .invoice-items-table {
+                width: 100% !important;
+                table-layout: fixed !important;
+            }
+            #printable-invoice .invoice-items-table .invoice-col-sno {
+                width: 8% !important;
+            }
+            #printable-invoice .invoice-items-table .invoice-col-description {
+                width: 34% !important;
+            }
+            #printable-invoice .invoice-items-table .invoice-col-hsn {
+                width: 14% !important;
+            }
+            #printable-invoice .invoice-items-table .invoice-col-qty {
+                width: 10% !important;
+            }
+            #printable-invoice .invoice-items-table .invoice-col-rate {
+                width: 17% !important;
+            }
+            #printable-invoice .invoice-items-table .invoice-col-amount {
+                width: 17% !important;
+            }
+            #printable-invoice .invoice-items-table th,
+            #printable-invoice .invoice-items-table td {
+                min-width: 0 !important;
+                max-width: 0 !important;
+                overflow-wrap: anywhere !important;
+                word-break: break-word !important;
+                white-space: normal !important;
+            }
+            #printable-invoice .invoice-items-table th {
+                font-size: 9px !important;
+                line-height: 1.05 !important;
+            }
+            #printable-invoice .invoice-items-table td {
+                font-size: 9px !important;
+                line-height: 1.15 !important;
+            }
+            #printable-invoice .invoice-items-spacer {
+                grid-template-columns: 8% 34% 14% 10% 17% 17% !important;
+            }
         }
         @media print {
             .no-print {
@@ -153,8 +194,8 @@
                 min-height: 0 !important;
                 overflow: visible !important;
                 font-family: Arial, Helvetica, sans-serif !important;
-                font-size: 8pt !important;
-                line-height: 1.05 !important;
+                font-size: 11pt !important;
+                line-height: 1.2 !important;
                 break-after: auto !important;
                 page-break-after: auto !important;
                 break-before: auto !important;
@@ -236,21 +277,21 @@
                 border-collapse: collapse !important;
                 table-layout: fixed !important;
                 min-width: 0 !important;
-                font-size: 7.5pt !important;
+                font-size: 10.5pt !important;
             }
-            #printable-statement .statement-invoice-col { width: 8%; }
-            #printable-statement .statement-date-col { width: 10%; }
-            #printable-statement .statement-receiver-col { width: 23%; }
-            #printable-statement .statement-money-col { width: 10%; }
-            #printable-statement .statement-received-col { width: 15%; }
-            #printable-statement .statement-status-col { width: 0; }
+            #printable-statement .statement-invoice-col { width: 7%; }
+            #printable-statement .statement-date-col { width: 9%; }
+            #printable-statement .statement-receiver-col { width: 20%; }
+            #printable-statement .statement-money-col { width: 9%; }
+            #printable-statement .statement-received-col { width: 13%; }
+            #printable-statement .statement-status-col { width: 7%; }
             #printable-statement th,
             #printable-statement td {
                 border: 1px solid #94a3b8 !important;
                 border-left: 1px solid #64748b !important;
                 border-right: 1px solid #64748b !important;
-                padding: 2px 3px !important;
-                line-height: 1.05 !important;
+                padding: 5px 6px !important;
+                line-height: 1.2 !important;
                 vertical-align: top !important;
                 min-width: 0 !important;
                 overflow-wrap: anywhere !important;
@@ -265,7 +306,7 @@
                 color: #0f172a !important;
             }
             #printable-statement thead th {
-                font-size: 9pt !important;
+                font-size: 10pt !important;
                 font-weight: 700 !important;
                 letter-spacing: 0.3pt !important;
                 text-transform: uppercase !important;
@@ -297,6 +338,22 @@
                 overflow-wrap: normal !important;
                 word-break: normal !important;
             }
+            #printable-statement td:nth-child(2) {
+                font-weight: 700 !important;
+            }
+            #printable-statement td:nth-child(7) {
+                white-space: normal !important;
+                overflow-wrap: normal !important;
+                word-break: normal !important;
+            }
+            #printable-statement .statement-received-print {
+                display: block !important;
+                white-space: normal !important;
+            }
+            #printable-statement .statement-receipt-line {
+                display: block !important;
+                white-space: nowrap !important;
+            }
             #printable-statement tr {
                 break-inside: avoid !important;
                 page-break-inside: avoid !important;
@@ -310,6 +367,22 @@
             #printable-statement > *:last-child {
                 break-after: auto !important;
                 page-break-after: auto !important;
+            }
+            #printable-statement col.statement-status-col {
+                display: table-column !important;
+                visibility: visible !important;
+            }
+            #printable-statement .statement-status-cell,
+            #printable-statement .no-print-status,
+            #printable-statement thead th:last-child,
+            #printable-statement tbody td:last-child {
+                display: table-cell !important;
+                visibility: visible !important;
+                width: auto !important;
+                max-width: none !important;
+                min-width: 0 !important;
+                padding: 5px 6px !important;
+                border: 1px solid #64748b !important;
             }
         }
     </style>
