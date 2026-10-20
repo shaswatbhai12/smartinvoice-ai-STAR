@@ -29,6 +29,18 @@
             min-width: 0;
             box-sizing: border-box;
         }
+        #printable-invoice .invoice-items-table {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            table-layout: fixed;
+        }
+        #printable-invoice .invoice-items-table th,
+        #printable-invoice .invoice-items-table td {
+            min-width: 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
         @media screen and (max-width: 640px) {
             .invoice-preview-shell {
                 display: block;
@@ -57,6 +69,12 @@
             }
             #printable-invoice .invoice-items-spacer {
                 min-width: 640px !important;
+            }
+            #printable-invoice .invoice-items-spacer-gst {
+                grid-template-columns: 44px 220px 90px 55px 110px 121px !important;
+            }
+            #printable-invoice .invoice-items-spacer-non-gst {
+                grid-template-columns: 50px 280px 60px 120px 130px !important;
             }
             #printable-invoice .invoice-items-table .invoice-col-sno {
                 width: 44px !important;
@@ -164,13 +182,28 @@
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
+            #printable-invoice .invoice-items-table {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                table-layout: fixed !important;
+            }
+            #printable-invoice .invoice-items-table th,
+            #printable-invoice .invoice-items-table td {
+                min-width: 0 !important;
+                overflow-wrap: anywhere !important;
+                word-break: break-word !important;
+            }
             #printable-invoice .items-wrapper {
                 flex: 1 1 auto !important;
                 display: flex !important;
                 flex-direction: column !important;
+                min-width: 0 !important;
+                overflow: hidden !important;
             }
             #printable-invoice .items-spacer {
                 flex: 1 1 auto !important;
+                min-width: 0 !important;
             }
             #printable-statement {
                 page: receivables;

@@ -565,6 +565,23 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
               break-inside: avoid !important;
               zoom: 1;
             }
+            #printable-invoice .invoice-items-table {
+              width: 100% !important;
+              max-width: 100% !important;
+              min-width: 0 !important;
+              table-layout: fixed !important;
+            }
+            #printable-invoice .invoice-items-table th,
+            #printable-invoice .invoice-items-table td {
+              min-width: 0 !important;
+              overflow-wrap: anywhere !important;
+              word-break: break-word !important;
+            }
+            #printable-invoice .items-wrapper,
+            #printable-invoice .items-spacer {
+              min-width: 0 !important;
+              overflow: hidden !important;
+            }
           </style>
         </head>
         <body>${invoiceCopy.outerHTML}</body>

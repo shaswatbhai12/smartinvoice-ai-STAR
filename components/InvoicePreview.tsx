@@ -118,12 +118,12 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data }) => {
       <div className="items-wrapper" style={{flex: '1 1 auto', display: 'flex', flexDirection: 'column', borderBottom: '1px solid black'}}>
         <table className="invoice-items-table w-full text-center border-collapse table-fixed">
           <colgroup>
-            <col className="invoice-col-sno" style={{ width: isGstRegistered ? '44px' : '50px' }} />
-            <col className="invoice-col-description" style={{ width: isGstRegistered ? '220px' : '280px' }} />
-            {isGstRegistered && <col className="invoice-col-hsn" style={{ width: '90px' }} />}
-            <col className="invoice-col-qty" style={{ width: isGstRegistered ? '55px' : '60px' }} />
-            <col className="invoice-col-rate" style={{ width: isGstRegistered ? '110px' : '120px' }} />
-            <col className="invoice-col-amount" style={{ width: isGstRegistered ? '121px' : '130px' }} />
+            <col className="invoice-col-sno" style={{ width: isGstRegistered ? '7%' : '8%' }} />
+            <col className="invoice-col-description" style={{ width: isGstRegistered ? '34%' : '45%' }} />
+            {isGstRegistered && <col className="invoice-col-hsn" style={{ width: '14%' }} />}
+            <col className="invoice-col-qty" style={{ width: isGstRegistered ? '8%' : '10%' }} />
+            <col className="invoice-col-rate" style={{ width: isGstRegistered ? '17%' : '18%' }} />
+            <col className="invoice-col-amount" style={{ width: isGstRegistered ? '20%' : '19%' }} />
           </colgroup>
           <thead>
             <tr className="border-b border-black">
@@ -149,7 +149,7 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data }) => {
           </tbody>
         </table>
         {/* Spacer with column lines to fill empty space */}
-        <div className={`items-spacer invoice-items-spacer ${isGstRegistered ? 'invoice-items-spacer-gst' : 'invoice-items-spacer-non-gst'}`} style={{flex: '1 1 auto', minHeight: '20px', minWidth: isGstRegistered ? '640px' : '640px', display: 'grid', gridTemplateColumns: isGstRegistered ? '44px 220px 90px 55px 110px 121px' : '50px 280px 60px 120px 130px'}}>
+        <div className={`items-spacer invoice-items-spacer ${isGstRegistered ? 'invoice-items-spacer-gst' : 'invoice-items-spacer-non-gst'}`} style={{flex: '1 1 auto', minHeight: '20px', minWidth: '0', display: 'grid', gridTemplateColumns: isGstRegistered ? '7% 34% 14% 8% 17% 20%' : '8% 45% 10% 18% 19%'}}>
           <div className="border-r border-black"></div>
           <div className="border-r border-black"></div>
           {isGstRegistered && <div className="border-r border-black"></div>}
