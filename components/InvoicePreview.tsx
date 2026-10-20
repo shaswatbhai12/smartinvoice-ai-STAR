@@ -116,7 +116,15 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data }) => {
 
       {/* Items Table - grows to fill space */}
       <div className="items-wrapper" style={{flex: '1 1 auto', display: 'flex', flexDirection: 'column', borderBottom: '1px solid black'}}>
-        <table className="w-full text-center border-collapse table-fixed">
+        <table className="invoice-items-table w-full text-center border-collapse table-fixed">
+          <colgroup>
+            <col className="invoice-col-sno" />
+            <col className="invoice-col-description" />
+            {isGstRegistered && <col className="invoice-col-hsn" />}
+            <col className="invoice-col-qty" />
+            <col className="invoice-col-rate" />
+            <col className="invoice-col-amount" />
+          </colgroup>
           <thead>
             <tr className="border-b border-black">
               <th className="border-r border-black py-2 w-14 font-bold uppercase text-[11px]">S No.</th>
@@ -141,7 +149,7 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data }) => {
           </tbody>
         </table>
         {/* Spacer with column lines to fill empty space */}
-        <div className="items-spacer" style={{flex: '1 1 auto', minHeight: '20px', display: 'grid', gridTemplateColumns: isGstRegistered ? '56px 1fr 80px 64px 96px 112px' : '56px 1fr 64px 96px 112px'}}>
+        <div className={`items-spacer invoice-items-spacer ${isGstRegistered ? 'invoice-items-spacer-gst' : 'invoice-items-spacer-non-gst'}`} style={{flex: '1 1 auto', minHeight: '20px', display: 'grid', gridTemplateColumns: isGstRegistered ? '56px 1fr 80px 64px 96px 112px' : '56px 1fr 64px 96px 112px'}}>
           <div className="border-r border-black"></div>
           <div className="border-r border-black"></div>
           {isGstRegistered && <div className="border-r border-black"></div>}
