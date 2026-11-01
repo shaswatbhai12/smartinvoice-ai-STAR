@@ -76,11 +76,14 @@ Deno.serve(async request => {
     if (!userId || token !== expected) {
       return preferenceRedirect('invalid', '');
     }
-    const { data: existing } = await supabase
+    const { data: existing, error: existingError } = await supabase
       .from('email_preferences')
       .select('email')
       .eq('user_id', userId)
       .maybeSingle();
+    if (existingError) {
+      console.error('Email preference lookup failed:', existingError.message);
+    }
     const { error } = await supabase.from('email_preferences').upsert({
       user_id: userId,
       email: existing?.email || '',
@@ -88,6 +91,7 @@ Deno.serve(async request => {
       updated_at: new Date().toISOString(),
     });
     if (error) {
+      console.error('Email preference update failed:', error.message);
       return preferenceRedirect('error', '');
     }
     if (action === 'subscribe') {
