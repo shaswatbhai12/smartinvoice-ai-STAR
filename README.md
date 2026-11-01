@@ -58,6 +58,15 @@ The PDFs are currently sent without password protection so they can be opened re
 mail and PDF applications. Password protection can be added later if a secure password-sharing
 process is chosen.
 
+Transactional welcome and company-profile emails are handled by
+`supabase/functions/transactional-email`. Run the updated `supabase/schema.sql` once in the
+Supabase SQL Editor to create `email_preferences`, then deploy both functions. The app sends the
+welcome message on the first authenticated session for a new browser/account and sends a
+company-added confirmation to the login email plus the vendor-profile email (deduplicated).
+Each message includes a signed unsubscribe link. Unsubscribing stops all SmartInvoice emails for
+that account, including monthly reports. The current implementation does not require the user to
+share any password or API key with the app.
+
 To enable it:
 
 1. Deploy the function with the Supabase CLI:

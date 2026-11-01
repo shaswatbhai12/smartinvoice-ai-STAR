@@ -50,6 +50,21 @@ const escapeHtml = (value: unknown) => String(value ?? '')
   .replaceAll('"', '&quot;')
   .replaceAll("'", '&#039;');
 
+const unsubscribeToken = async (userId: string) => {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(serviceRoleKey),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(userId));
+  return `${userId}.${Array.from(new Uint8Array(signature)).map(byte => byte.toString(16).padStart(2, '0')).join('')}`;
+};
+
+const unsubscribeUrl = async (userId: string) =>
+  `${supabaseUrl}/functions/v1/transactional-email?action=unsubscribe&v=3&token=${encodeURIComponent(await unsubscribeToken(userId))}`;
+
 const currency = (value: number) => `₹${value.toLocaleString('en-IN', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -228,7 +243,7 @@ const previousMonth = (timeZone: string) => {
   return { reportMonth, start, end, currentDay };
 };
 
-const reportHtml = (reportMonth: string, invoices: Invoice[], profile: VendorProfile) => {
+const reportHtml = (reportMonth: string, invoices: Invoice[], profile: VendorProfile, unsubscribeLink: string) => {
   const summary = invoices.reduce((result, invoice) => {
     const totals = invoiceTotals(invoice);
     result.subtotal += totals.subtotal;
@@ -320,6 +335,10 @@ const reportHtml = (reportMonth: string, invoices: Invoice[], profile: VendorPro
               <strong style="color:#153b6b">SmartInvoice AI</strong><br>
               ${escapeHtml(profile.vendorEmail || '')}
             </p>
+            <p style="margin:22px 0 0;padding-top:14px;border-top:1px solid #e5e7eb;color:#64748b;font-size:12px;line-height:1.5">
+              You received this report because monthly SmartInvoice emails are enabled for your account.
+              <a href="${unsubscribeLink}" style="color:#153b6b;font-weight:600">Unsubscribe from all SmartInvoice emails</a>.
+            </p>
           </div>
         </td>
       </tr>
@@ -388,6 +407,13 @@ Deno.serve(async request => {
       .eq('user_id', setting.user_id);
     if (profileError) throw new Error(profileError.message);
     const profiles = (profileRows || []).map(row => row.data as VendorProfile);
+    const { data: emailPreference, error: preferenceError } = await supabase
+      .from('email_preferences')
+      .select('unsubscribed')
+      .eq('user_id', setting.user_id)
+      .maybeSingle();
+    if (preferenceError) throw new Error(preferenceError.message);
+    if (emailPreference?.unsubscribed) continue;
     const firstInvoice = invoices[0];
     const profile = profiles.find(candidate =>
       candidate.id === firstInvoice?.vendorProfileId
@@ -471,6 +497,7 @@ Deno.serve(async request => {
       undefined,
       [0.07, 0.09, 0.20, 0.09, 0.09, 0.10, 0.16, 0.10, 0.10],
     );
+    const unsubscribeLink = await unsubscribeUrl(setting.user_id);
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
@@ -478,7 +505,11 @@ Deno.serve(async request => {
         from: sender,
         to: recipientEmails,
         subject: `${isTest ? '[TEST] ' : ''}SmartInvoice AI - ${reportMonth} invoice and receivables report`,
-        html: reportHtml(reportMonth, invoices, profile),
+        headers: {
+          'List-Unsubscribe': `<${unsubscribeLink}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+        html: reportHtml(reportMonth, invoices, profile, unsubscribeLink),
         attachments: [
           { filename: `${reportMonth}_Invoices_Summary.pdf`, content: invoiceSummaryPdf },
           { filename: `${reportMonth}_Receivables_Statement.pdf`, content: receivablesPdf },

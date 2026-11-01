@@ -180,11 +180,12 @@ interface AppProps {
   sync?: CloudSync | null;          // present when signed in: data lives in the cloud database
   syncStatus?: SyncStatus;
   accountSlot?: React.ReactNode;    // e.g. the Clerk user button
+  notifyEmail?: (type: 'welcome' | 'company', profile?: VendorProfile) => void;
 }
 
 const LEGACY_DONE_KEY = 'legacy_upload_done';
 
-const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot = null }) => {
+const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot = null, notifyEmail }) => {
   const [profiles, setProfiles] = useState<VendorProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const [view, setView] = useState<'editor' | 'history' | 'receivables' | 'profiles' | 'privacy' | 'report-policy' | 'contact'>('editor');
@@ -473,6 +474,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
       setActiveProfileId(newProfile.id);
       rememberActive(newProfile.id);
       applyProfile(newProfile, newProfile.lastInvoiceNumber);
+      notifyEmail?.('company', newProfile);
     }
     setShowProfileForm(false);
     setEditingProfile(null);

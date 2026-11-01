@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { SignInButton, SignUpButton, UserButton, useAuth } from '@clerk/react';
+import { SignInButton, SignUpButton, UserButton, useAuth, useUser } from '@clerk/react';
 import App from '../App';
 import { CloudSync, SyncStatus } from '../services/cloudSync';
 import { createUserClient, isSupabaseConfigured } from '../services/supabaseClient';
@@ -20,6 +20,7 @@ const Screen: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 const AuthGate: React.FC = () => {
   const { isLoaded, isSignedIn, userId, getToken } = useAuth();
+  const { user } = useUser();
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
 
   // Always call the latest getToken without recreating the Supabase client.
@@ -33,6 +34,27 @@ const AuthGate: React.FC = () => {
   }, [isSignedIn, userId]);
 
   useEffect(() => setSyncStatus('idle'), [userId]);
+
+  const notifyEmail = async (type: 'welcome' | 'company', profile?: import('../types').VendorProfile) => {
+    if (!userId) return;
+    if (type === 'welcome') {
+      const key = `smartinvoice_welcome_sent_${userId}`;
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, 'true');
+    }
+    const token = await getToken();
+    if (!token) return;
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transactional-email`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, profile }),
+    });
+    if (!response.ok) console.error('Transactional email failed:', await response.text());
+  };
+
+  useEffect(() => {
+    if (isSignedIn && userId && user?.primaryEmailAddress) void notifyEmail('welcome');
+  }, [isSignedIn, userId, user?.primaryEmailAddress]);
 
   if (!isLoaded) {
     return (
@@ -69,7 +91,7 @@ const AuthGate: React.FC = () => {
     );
   }
 
-  return <App key={userId} sync={sync} syncStatus={syncStatus} accountSlot={<UserButton />} />;
+  return <App key={userId} sync={sync} syncStatus={syncStatus} accountSlot={<UserButton />} notifyEmail={notifyEmail} />;
 };
 
 export default AuthGate;

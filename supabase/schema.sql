@@ -71,9 +71,17 @@ create table if not exists public.monthly_report_test_runs (
   recipient_email text not null
 );
 
+create table if not exists public.email_preferences (
+  user_id text primary key,
+  email text not null,
+  unsubscribed boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+
 alter table public.monthly_report_settings enable row level security;
 alter table public.monthly_report_runs enable row level security;
 alter table public.monthly_report_test_runs enable row level security;
+alter table public.email_preferences enable row level security;
 
 drop policy if exists "own monthly report settings" on public.monthly_report_settings;
 create policy "own monthly report settings" on public.monthly_report_settings
@@ -91,12 +99,20 @@ create policy "own monthly report test runs" on public.monthly_report_test_runs
   for select to authenticated
   using ((select auth.jwt() ->> 'sub') = user_id);
 
+drop policy if exists "own email preferences" on public.email_preferences;
+create policy "own email preferences" on public.email_preferences
+  for all to authenticated
+  using ((select auth.jwt() ->> 'sub') = user_id)
+  with check ((select auth.jwt() ->> 'sub') = user_id);
+
 revoke all on public.monthly_report_settings from anon;
 revoke all on public.monthly_report_runs from anon;
 revoke all on public.monthly_report_test_runs from anon;
 grant select, insert, update, delete on public.monthly_report_settings to authenticated;
 grant select on public.monthly_report_runs to authenticated;
 grant select on public.monthly_report_test_runs to authenticated;
+revoke all on public.email_preferences from anon;
+grant select, insert, update on public.email_preferences to authenticated;
 
 -- OLD OPEN TABLE: if you ever created "app_storage" from the earlier README, anyone with the
 -- public key can still read it. After confirming it holds nothing you need, remove it:
