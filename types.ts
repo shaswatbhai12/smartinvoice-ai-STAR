@@ -28,6 +28,7 @@ export interface InvoiceData {
   vendorName: string;
   vendorAddress: string;
   vendorEmail: string;
+  receiveMonthlyReports: boolean;
   vendorPhone: string;
   vendorGstin: string;
   dealsIn: string;
@@ -91,6 +92,7 @@ export const EMPTY_INVOICE: InvoiceData = {
   vendorName: '',
   vendorAddress: '',
   vendorEmail: '',
+  receiveMonthlyReports: true,
   vendorPhone: '',
   vendorGstin: '',
   dealsIn: '',

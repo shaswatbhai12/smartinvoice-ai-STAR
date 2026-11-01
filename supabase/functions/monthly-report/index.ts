@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import PDFDocument from 'https://esm.sh/pdfkit@0.15.0?target=deno';
+import { PDFDocument, StandardFonts, rgb } from 'https://esm.sh/pdf-lib@1.17.1';
 
 type InvoiceItem = { quantity?: number; unitPrice?: number };
 type Receipt = { amount?: number; date?: string };
@@ -8,6 +8,7 @@ type Invoice = {
   vendorName?: string;
   vendorAddress?: string;
   vendorEmail?: string;
+  receiveMonthlyReports?: boolean;
   vendorPhone?: string;
   vendorGstin?: string;
   pan?: string;
@@ -99,14 +100,6 @@ const toBase64 = (bytes: Uint8Array) => {
   return btoa(binary);
 };
 
-const normalizePasswordPart = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-
-const reportPassword = (profile: VendorProfile) => {
-  const company = normalizePasswordPart(profile.vendorName || 'SMARTINVOICE').slice(0, 4).padEnd(4, 'X');
-  const pan = normalizePasswordPart(profile.pan || 'NOPAN').slice(0, 5).padEnd(5, 'X');
-  return `${company}${pan}`;
-};
-
 const pdf = async (
   title: string,
   headers: string[],
@@ -115,36 +108,17 @@ const pdf = async (
   headerLines: string[] = [],
   totalRow?: string[],
   columnWidths?: number[],
-  password?: string,
 ) => {
-  const chunks: Uint8Array[] = [];
-  const document = new PDFDocument({
-    size: 'A4',
-    layout: 'landscape',
-    margin: 0,
-    userPassword: password,
-    ownerPassword: password,
-    permissions: {
-      printing: 'highResolution',
-      modifying: false,
-      copying: false,
-      annotating: false,
-      fillingForms: false,
-      contentAccessibility: true,
-      documentAssembly: false,
-    },
-  });
-  document.on('data', (chunk: Uint8Array) => chunks.push(chunk));
-  const finished = new Promise<void>((resolve, reject) => {
-    document.on('end', resolve);
-    document.on('error', reject);
-  });
-  const navy = '#153b6b';
-  const lightBlue = '#e8eff7';
-  const borderBlue = '#9eafc9';
-  const white = '#ffffff';
+  const document = await PDFDocument.create();
+  const font = await document.embedFont(StandardFonts.Helvetica);
+  const bold = await document.embedFont(StandardFonts.HelveticaBold);
+  const navy = rgb(0.08, 0.21, 0.38);
+  const lightBlue = rgb(0.91, 0.94, 0.97);
+  const borderBlue = rgb(0.62, 0.7, 0.79);
+  const white = rgb(1, 1, 1);
   const pageWidth = 841.89;
   const pageHeight = 595.28;
+  let page = document.addPage([pageWidth, pageHeight]);
   const margin = 28;
   const contentWidth = pageWidth - margin * 2;
   const widths = columnWidths && columnWidths.length === headers.length
@@ -152,74 +126,87 @@ const pdf = async (
     : headers.map(() => 1 / headers.length);
   const columnWidthsInPoints = widths.map(width => contentWidth * width);
   let y = pageHeight - margin;
-  let page = document;
-  const drawCell = (text: string, x: number, top: number, width: number, height: number, isHeader = false, alignRight = false, isTotal = false) => {
-    const value = String(text || '');
-    document.font(isHeader || isTotal ? 'Helvetica-Bold' : 'Helvetica').fontSize(isHeader ? 8 : 7.5);
-    document.fillColor(isHeader ? white : '#0d141f');
-    document.text(value, x + 4, top + 5, {
-      width: width - 8,
-      height: height - 8,
-      align: alignRight ? 'right' : 'left',
-      lineGap: 0,
-      ellipsis: true,
+  const drawCell = (text: string, x: number, top: number, width: number, isHeader = false, alignRight = false, isTotal = false) => {
+    const activeFont = isHeader || isTotal ? bold : font;
+    const size = isHeader ? 8 : 7.5;
+    const maxChars = Math.max(8, Math.floor((width - 8) / (size * 0.52)));
+    const lines = String(text || '').split('\n').flatMap(part =>
+      part.match(new RegExp(`.{1,${maxChars}}(?:\\s+|$)|.{1,${maxChars}}`, 'g')) || [''],
+    );
+    lines.slice(0, 3).forEach((line, index) => {
+      const cleanLine = line.trim();
+      const textWidth = activeFont.widthOfTextAtSize(cleanLine, size);
+      page.drawText(cleanLine, {
+        x: alignRight ? x + width - textWidth - 4 : x + 4,
+        y: top - 12 - index * 9,
+        size,
+        font: activeFont,
+        color: isHeader ? white : rgb(0.05, 0.08, 0.12),
+      });
     });
+    return Math.max(22, lines.slice(0, 3).length * 9 + 8);
   };
-  const drawCentered = (text: string, size: number, bold = false, color = '#334155') => {
-    document.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(size).fillColor(color);
-    document.text(text, margin, y, { width: contentWidth, align: 'center' });
+  const drawCentered = (text: string, size: number, activeFont = font, color = rgb(0.2, 0.25, 0.3)) => {
+    const textWidth = activeFont.widthOfTextAtSize(text, size);
+    page.drawText(text, { x: margin + (contentWidth - textWidth) / 2, y, size, font: activeFont, color });
     y -= size + 5;
   };
   if (headerLines.length > 0) {
-    drawCentered(headerLines[0], 16, true, navy);
+    drawCentered(headerLines[0], 16, bold, navy);
     headerLines.slice(1).forEach(line => drawCentered(line, 8.5));
-    drawCentered(title, 11, true, navy);
+    drawCentered(title, 11, bold, navy);
   } else {
-    drawCentered(title, 16, true, navy);
+    drawCentered(title, 16, bold, navy);
   }
-  document.font('Helvetica').fontSize(8.5).fillColor('#334155').text(summary, margin, y, { width: contentWidth });
+  page.drawText(summary, { x: margin, y, size: 8.5, font, color: rgb(0.2, 0.25, 0.3) });
   y -= 18;
   const rowHeight = (values: string[], isHeader = false) => {
-    document.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(isHeader ? 8 : 7.5);
-    return Math.max(22, values.reduce((highest, value, index) => Math.max(
-      highest,
-      Math.min(3, Math.ceil(document.heightOfString(String(value || ''), { width: columnWidthsInPoints[index] - 8 }) / 9)) * 9 + 8,
-    ), 22));
+    const size = isHeader ? 8 : 7.5;
+    return Math.max(22, values.reduce((highest, value, index) => {
+      const maxChars = Math.max(8, Math.floor((columnWidthsInPoints[index] - 8) / (size * 0.52)));
+      const lines = String(value || '').match(new RegExp(`.{1,${maxChars}}(?:\\s+|$)|.{1,${maxChars}}`, 'g')) || [''];
+      return Math.max(highest, Math.min(3, lines.length) * 9 + 8);
+    }, 22));
   };
   const drawRow = (values: string[], isHeader = false, rowIndex = 0, isTotal = false) => {
     const height = rowHeight(values, isHeader);
     if (y - height < 30) {
-      document.addPage({ size: 'A4', layout: 'landscape', margin: 0 });
+      page = document.addPage([pageWidth, pageHeight]);
       y = pageHeight - margin;
       if (!isHeader) {
         drawRow(headers, true, 0);
       }
     }
-    document.rect(margin, y - height, contentWidth, height)
-      .fillAndStroke(isHeader && !isTotal ? navy : isTotal ? lightBlue : rowIndex % 2 === 1 ? lightBlue : white, borderBlue);
+    page.drawRectangle({
+      x: margin,
+      y: y - height,
+      width: contentWidth,
+      height,
+      borderColor: borderBlue,
+      borderWidth: 0.5,
+      color: isHeader && !isTotal ? navy : isTotal ? lightBlue : rowIndex % 2 === 1 ? lightBlue : white,
+    });
     let cellX = margin;
     values.forEach((value, index) => {
-      drawCell(value, cellX, y - height, columnWidthsInPoints[index], height, isHeader && !isTotal, !isHeader && index >= headers.length - 3, isTotal);
+      drawCell(value, cellX, y, columnWidthsInPoints[index], isHeader && !isTotal, !isHeader && index >= headers.length - 3, isTotal);
       cellX += columnWidthsInPoints[index];
     });
     let dividerX = margin;
     for (let index = 1; index < headers.length; index++) {
       dividerX += columnWidthsInPoints[index - 1];
-      document.moveTo(dividerX, y).lineTo(dividerX, y - height).lineWidth(0.5).stroke(borderBlue);
+      page.drawLine({
+        start: { x: dividerX, y },
+        end: { x: dividerX, y: y - height },
+        thickness: 0.5,
+        color: borderBlue,
+      });
     }
     y -= height;
   };
   drawRow(headers, true);
   rows.forEach((row, index) => drawRow(row, false, index));
   if (totalRow) drawRow(totalRow, false, 0, true);
-  document.end();
-  await finished;
-  return toBase64(new Uint8Array(chunks.reduce((all, chunk) => {
-    const combined = new Uint8Array(all.length + chunk.length);
-    combined.set(all);
-    combined.set(chunk, all.length);
-    return combined;
-  }, new Uint8Array())));
+  return toBase64(await document.save());
 };
 
 const previousMonth = (timeZone: string) => {
@@ -259,22 +246,44 @@ const reportHtml = (reportMonth: string, invoices: Invoice[], profile: VendorPro
   const statusText = Object.entries(statusCounts)
     .map(([status, count]) => `${count} ${status}`)
     .join(' &nbsp;&middot;&nbsp; ') || 'No invoices';
-  return `<div style="font-family:Arial,Helvetica,sans-serif;color:#14213d;max-width:900px">
-    <div style="text-align:center;background:#153b6b;color:#fff;padding:22px 18px;border-radius:10px 10px 0 0">
-      <div style="font-size:11px;letter-spacing:2px;font-weight:700;color:#dbeafe;margin-bottom:8px">SMARTINVOICE AI</div>
-      <h1 style="margin:0;color:#fff;font-size:24px">${escapeHtml(profile.vendorName || 'SmartInvoice')}</h1>
-      <div style="font-size:13px;font-weight:700;color:#fff">GSTIN: ${escapeHtml(profile.vendorGstin || '-')} &nbsp;|&nbsp; PAN: ${escapeHtml(profile.pan || '-')}</div>
-      <div style="font-size:13px;color:#fff">${escapeHtml(profile.vendorAddress || '-')} &nbsp;|&nbsp; Ph: ${escapeHtml(profile.vendorPhone || '-')}</div>
-      <div style="font-size:13px;color:#fff">${escapeHtml(profile.vendorEmail || '-')} &nbsp;|&nbsp; Deals in: ${escapeHtml(profile.dealsIn || '-')}</div>
-    </div>
-    <div style="padding:24px 20px;background:#f7faff;border:1px solid #d5dfeb;border-top:0;border-radius:0 0 10px 10px">
-      <p style="margin:0;color:#64748b;font-size:13px">MONTHLY BUSINESS REPORT</p>
-      <h2 style="margin:5px 0 8px;color:#153b6b;font-size:22px">Sales and receivables summary</h2>
-      <p style="margin:0 0 20px;color:#475569;font-size:14px;line-height:1.55">
-        This report covers invoices billed during <strong>${escapeHtml(monthLabel(reportMonth))}</strong>.
-        The detailed invoice register and receivables statement are attached as PDF documents for your records.
-      </p>
-      <table style="border-collapse:separate;border-spacing:8px;width:calc(100% + 16px);margin:0 -8px 18px;font-size:13px">
+  return `<div style="margin:0;background:#f2f5f9;padding:24px 8px;font-family:Arial,Helvetica,sans-serif;color:#1f2937">
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:720px;margin:0 auto;background:#fff;border:1px solid #d9e2ec">
+      <tr>
+        <td style="padding:0">
+          <div style="background:#153b6b;padding:18px 24px;color:#fff">
+            <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%">
+              <tr>
+                <td style="vertical-align:middle">
+                  <div style="display:inline-block;background:#fff;color:#153b6b;font-weight:800;font-size:17px;letter-spacing:-.5px;padding:8px 10px;border-radius:4px">SI</div>
+                  <span style="font-size:18px;font-weight:700;margin-left:10px;vertical-align:middle">SmartInvoice AI</span>
+                </td>
+                <td style="text-align:right;font-size:11px;color:#dbeafe;vertical-align:middle">AUTOMATED REPORT</td>
+              </tr>
+            </table>
+          </div>
+          <div style="height:5px;background:#e6a23c"></div>
+          <div style="padding:28px 30px 30px">
+            <p style="margin:0 0 5px;color:#64748b;font-size:13px">MONTHLY INVOICE AND RECEIVABLES REPORT</p>
+            <h1 style="margin:0;color:#153b6b;font-size:25px;line-height:1.25">Your ${escapeHtml(monthLabel(reportMonth))} report</h1>
+            <p style="margin:20px 0 0;color:#1f2937;font-size:15px;line-height:1.65">
+              Dear <strong>${escapeHtml(profile.vendorName || 'Valued customer')}</strong>,
+            </p>
+            <p style="margin:10px 0 0;color:#475569;font-size:14px;line-height:1.65">
+              Your SmartInvoice AI monthly report for <strong>${escapeHtml(monthLabel(reportMonth))}</strong> is attached to this email.
+              It provides a convenient summary of your billing activity, collections, and outstanding receivables for the month.
+            </p>
+            <p style="margin:10px 0 0;color:#64748b;font-size:12px;line-height:1.55">
+              ${escapeHtml(profile.vendorAddress || '')}${profile.vendorPhone ? ` &nbsp;|&nbsp; Ph: ${escapeHtml(profile.vendorPhone)}` : ''}<br>
+              ${profile.vendorGstin ? `GSTIN: ${escapeHtml(profile.vendorGstin)}` : ''}${profile.pan ? ` &nbsp;|&nbsp; PAN: ${escapeHtml(profile.pan)}` : ''}
+            </p>
+            <div style="margin:22px 0;background:#f5f8fc;border-left:4px solid #153b6b;padding:15px 16px">
+              <strong style="color:#153b6b;font-size:15px">Report summary</strong>
+              <p style="margin:7px 0 0;color:#475569;font-size:13px;line-height:1.6">
+                The detailed invoice register and receivables statement are included as PDF attachments.
+                Please retain them for your accounting and payment follow-up records.
+              </p>
+            </div>
+            <table role="presentation" cellpadding="0" cellspacing="8" style="width:calc(100% + 16px);margin:0 -8px 18px;font-size:13px">
         <tr>
           <td style="background:#fff;border:1px solid #d5dfeb;padding:14px;border-radius:7px"><span style="color:#64748b">Invoices</span><br><strong style="font-size:20px;color:#153b6b">${invoices.length}</strong></td>
           <td style="background:#fff;border:1px solid #d5dfeb;padding:14px;border-radius:7px"><span style="color:#64748b">Taxable amount</span><br><strong style="font-size:17px;color:#153b6b">${currency(summary.subtotal)}</strong></td>
@@ -285,27 +294,41 @@ const reportHtml = (reportMonth: string, invoices: Invoice[], profile: VendorPro
           <td style="background:#eaf7ef;border:1px solid #b7dec4;padding:14px;border-radius:7px"><span style="color:#39704a">Received</span><br><strong style="font-size:17px;color:#246238">${currency(summary.received)}</strong></td>
           <td style="background:#fff5e8;border:1px solid #f0d2a3;padding:14px;border-radius:7px"><span style="color:#8a5a16">Remaining</span><br><strong style="font-size:17px;color:#8a5a16">${currency(summary.remaining)}</strong></td>
         </tr>
-      </table>
-      <div style="background:#fff;border-left:4px solid #2864a5;padding:12px 14px;margin:0 0 18px;color:#475569;font-size:13px">
-        <strong style="color:#153b6b">Payment status overview</strong><br>
-        ${statusText}
-      </div>
-      <h3 style="margin:0 0 8px;color:#153b6b;font-size:16px">Your attachments</h3>
-      <p style="margin:0;color:#475569;font-size:13px;line-height:1.6">
-        <strong>${escapeHtml(reportMonth)}_Invoices_Summary.pdf</strong><br>
-        Sales register with company header, invoice numbers, dates, receiver details, GSTIN, taxable amount, GST, grand total, and final totals.<br><br>
-        <strong>${escapeHtml(reportMonth)}_Receivables_Statement.pdf</strong><br>
-        Receivables statement with invoice totals, received payments, dated receipt lines, remaining balances, and payment status.
-      </p>
-      <p style="margin:22px 0 0;color:#64748b;font-size:12px;line-height:1.5">
-        Please keep these documents for your monthly accounting records. This is an automated SmartInvoice AI message; the attached PDFs contain the complete invoice-level details.
-      </p>
-      <div style="margin-top:16px;background:#eef4fb;border:1px solid #c9d8ea;border-radius:7px;padding:12px 14px;color:#475569;font-size:12px;line-height:1.5">
-        <strong style="color:#153b6b">PDF security</strong><br>
-        Both PDF attachments are password protected. The password is not included in this email.
-        Hint: use the first four letters of the registered company name followed by the first five characters of the PAN.
-      </div>
-    </div>
+            </table>
+            <div style="background:#fff;border-left:4px solid #2864a5;padding:12px 14px;margin:0 0 20px;color:#475569;font-size:13px">
+              <strong style="color:#153b6b">Payment status overview</strong><br>
+              ${statusText}
+            </div>
+            <div style="background:#fff;border:1px solid #d9e2ec;padding:16px 18px;margin:0 0 20px">
+              <strong style="color:#153b6b;font-size:15px">Attachments</strong>
+              <p style="margin:9px 0 0;color:#475569;font-size:13px;line-height:1.65">
+                <strong>${escapeHtml(reportMonth)}_Invoices_Summary.pdf</strong><br>
+                Sales register containing invoice numbers, dates, receiver details, GSTIN, taxable amount, GST, grand total, and totals.<br><br>
+                <strong>${escapeHtml(reportMonth)}_Receivables_Statement.pdf</strong><br>
+                Receivables statement containing billed totals, receipts, dated payment lines, balances, and payment status.
+              </p>
+            </div>
+            <div style="background:#fff8e8;border:1px solid #f0d7a1;padding:13px 15px;margin-bottom:22px;color:#72551c;font-size:12px;line-height:1.55">
+              <strong>Please note:</strong> This is an automated message. The attached PDFs contain the complete invoice-level details.
+              Please do not reply to this email.
+            </div>
+            <p style="margin:0;color:#475569;font-size:14px;line-height:1.6">
+              Thank you for using SmartInvoice AI. We hope these reports make your monthly accounting and receivables follow-up easier.
+            </p>
+            <p style="margin:18px 0 0;color:#475569;font-size:13px;line-height:1.5">
+              Warm regards,<br>
+              <strong style="color:#153b6b">SmartInvoice AI</strong><br>
+              ${escapeHtml(profile.vendorEmail || '')}
+            </p>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td style="background:#153b6b;padding:14px 24px;text-align:center;color:#dbeafe;font-size:11px">
+          ${escapeHtml(profile.vendorName || 'SmartInvoice AI')} &nbsp;|&nbsp; Powered by SmartInvoice AI
+        </td>
+      </tr>
+    </table>
   </div>`;
 };
 
@@ -379,6 +402,7 @@ Deno.serve(async request => {
     ];
     const recipientEmails = Array.from(new Set(
       profiles
+        .filter(candidate => candidate.receiveMonthlyReports !== false)
         .map(candidate => candidate.vendorEmail?.trim().toLowerCase())
         .filter((email): email is string => Boolean(email)),
     ));
@@ -435,7 +459,6 @@ Deno.serve(async request => {
       ],
       ['TOTAL', '', '', '', '', pdfCurrency(summaryTotals.subtotal), pdfCurrency(summaryTotals.gst), pdfCurrency(summaryTotals.total)],
       [0.05, 0.08, 0.09, 0.23, 0.16, 0.13, 0.11, 0.15],
-      reportPassword(profile),
     );
     const receivablesPdf = await pdf(
       `RECEIVABLES STATEMENT - ${monthLabel(reportMonth)}`,
@@ -447,7 +470,6 @@ Deno.serve(async request => {
       ],
       undefined,
       [0.07, 0.09, 0.20, 0.09, 0.09, 0.10, 0.16, 0.10, 0.10],
-      reportPassword(profile),
     );
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',

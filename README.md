@@ -54,13 +54,9 @@ previous month's invoices:
 The second PDF covers invoices dated from day 1 through the last day of the previous month.
 It includes billed total, receipts, remaining balance, payment status, and receipt values
 as of that month's end. Receipt amounts are read from each invoice's saved `receipts` list.
-Both PDFs are password protected. The password is generated privately from the matched vendor
-profile in this format:
-`CCCCPPPPP` — the first four letters of the company name followed by the first five characters
-of the PAN (spaces and punctuation are removed and letters are uppercased, making a 9-character
-password). If a profile value is shorter than required, `X` is used as padding. The email body
-contains only a hint, never the password itself. Share this private rule only with authorized
-people who need to open the reports.
+The PDFs are currently sent without password protection so they can be opened reliably in common
+mail and PDF applications. Password protection can be added later if a secure password-sharing
+process is chosen.
 
 To enable it:
 

@@ -12,6 +12,7 @@ const EMPTY_PROFILE: Omit<VendorProfile, 'id'> = {
   vendorName: '',
   vendorAddress: '',
   vendorEmail: '',
+  receiveMonthlyReports: true,
   vendorPhone: '',
   vendorGstin: '',
   pan: '',
@@ -108,6 +109,18 @@ const ProfileFormModal: React.FC<ProfileFormModalProps> = ({ profileDraft, setPr
             <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
             <input className={inputCls} placeholder="Email" value={profileDraft.vendorEmail} onChange={e => setProfileDraft(d => ({ ...d, vendorEmail: e.target.value }))} />
           </div>
+          <label className="col-span-2 flex items-start gap-3 rounded-lg border border-indigo-100 bg-indigo-50/60 p-3 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={profileDraft.receiveMonthlyReports}
+              onChange={e => setProfileDraft(d => ({ ...d, receiveMonthlyReports: e.target.checked }))}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <span>
+              <span className="block font-semibold text-gray-900">Receive monthly invoice reports</span>
+              <span className="mt-0.5 block text-xs text-gray-500">Send the monthly sales register and receivables report to this profile's email address.</span>
+            </span>
+          </label>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">GST Registered?</label>
             <select
@@ -174,7 +187,7 @@ const LEGACY_DONE_KEY = 'legacy_upload_done';
 const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot = null }) => {
   const [profiles, setProfiles] = useState<VendorProfile[]>([]);
   const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
-  const [view, setView] = useState<'editor' | 'history' | 'receivables' | 'profiles'>('editor');
+  const [view, setView] = useState<'editor' | 'history' | 'receivables' | 'profiles' | 'privacy' | 'report-policy' | 'contact'>('editor');
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [editingProfile, setEditingProfile] = useState<VendorProfile | null>(null);
   const [profileDraft, setProfileDraft] = useState<Omit<VendorProfile, 'id'>>(EMPTY_PROFILE);
@@ -438,7 +451,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
     setView('editor');
   };
 
-  const navigateTo = (nextView: 'editor' | 'history' | 'receivables' | 'profiles') => {
+  const navigateTo = (nextView: 'editor' | 'history' | 'receivables' | 'profiles' | 'privacy' | 'report-policy' | 'contact') => {
     setView(nextView);
     setMobileNavOpen(false);
   };
@@ -1321,7 +1334,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
                       {activeProfileId === p.id && <span className="text-xs text-indigo-600 font-semibold">● Active</span>}
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => { setEditingProfile(p); setProfileDraft({ ...p, isGstRegistered: profileHasGst }); setShowProfileForm(true); }} className="text-gray-400 hover:text-indigo-600 transition">
+                      <button onClick={() => { setEditingProfile(p); setProfileDraft({ ...p, isGstRegistered: profileHasGst, receiveMonthlyReports: p.receiveMonthlyReports !== false }); setShowProfileForm(true); }} className="text-gray-400 hover:text-indigo-600 transition">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                       </button>
                       <button onClick={() => deleteProfile(p.id)} className="text-gray-400 hover:text-red-500 transition">
@@ -1342,7 +1355,115 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
             </div>
           </div>
         )}
+
+        {(view === 'privacy' || view === 'report-policy' || view === 'contact') && (
+          <article className="mx-auto max-w-4xl rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:p-10">
+            <button
+              type="button"
+              onClick={() => navigateTo('editor')}
+              className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:underline"
+            >
+              <span aria-hidden="true">←</span> Back to SmartInvoice
+            </button>
+            {view === 'privacy' ? (
+              <>
+                <p className="text-sm font-semibold uppercase tracking-wide text-indigo-600">SmartInvoice AI</p>
+                <h1 className="mt-2 text-3xl font-bold text-gray-900">Privacy Policy</h1>
+                <p className="mt-2 text-sm text-gray-500">Last updated: 1 November 2026</p>
+                <div className="mt-8 space-y-7 text-sm leading-7 text-gray-600">
+                  <section>
+                    <h2 className="text-lg font-bold text-gray-900">Information you store</h2>
+                    <p className="mt-2">SmartInvoice AI stores the invoice, receiver, receipt, and vendor-profile details that you enter or import. This may include company names, addresses, GSTINs, PAN, contact details, bank details, invoice items, and payment records.</p>
+                  </section>
+                  <section>
+                    <h2 className="text-lg font-bold text-gray-900">How your information is used</h2>
+                    <p className="mt-2">Your information is used to create invoices, maintain invoice history, calculate receivables, generate exports, synchronize your signed-in account, and prepare monthly reports when you enable that feature.</p>
+                  </section>
+                  <section>
+                    <h2 className="text-lg font-bold text-gray-900">Cloud storage and account access</h2>
+                    <p className="mt-2">When you use signed-in cloud sync, your data is stored in the application's database and associated with your account. Access is restricted by your authenticated account. Keep your sign-in credentials private and sign out on shared devices.</p>
+                  </section>
+                  <section>
+                    <h2 className="text-lg font-bold text-gray-900">Monthly email reports</h2>
+                    <p className="mt-2">If monthly reports are enabled, the application uses the email addresses saved in your vendor profiles to deliver the report. The email contains a summary and may include invoice and receivables PDFs as attachments. See the <button type="button" onClick={() => navigateTo('report-policy')} className="font-semibold text-indigo-600 hover:underline">Monthly Email Report Policy</button> for details.</p>
+                  </section>
+                  <section>
+                    <h2 className="text-lg font-bold text-gray-900">Your responsibilities</h2>
+                    <p className="mt-2">Only enter information that you are authorized to store and process. Review recipient email addresses before enabling automated reports, and protect downloaded invoices and backups because they may contain financial and personal information.</p>
+                  </section>
+                  <section>
+                    <h2 className="text-lg font-bold text-gray-900">Changes and questions</h2>
+                    <p className="mt-2">This policy may be updated when the application changes. For privacy questions or data removal requests, contact the application administrator using the account or vendor email configured for your SmartInvoice workspace.</p>
+                  </section>
+                </div>
+              </>
+            ) : view === 'report-policy' ? (
+              <>
+                <p className="text-sm font-semibold uppercase tracking-wide text-indigo-600">SmartInvoice AI</p>
+                <h1 className="mt-2 text-3xl font-bold text-gray-900">Monthly Email Report Policy</h1>
+                <p className="mt-2 text-sm text-gray-500">Last updated: 1 November 2026</p>
+                <div className="mt-8 space-y-7 text-sm leading-7 text-gray-600">
+                  <section>
+                    <h2 className="text-lg font-bold text-gray-900">What is sent</h2>
+                    <p className="mt-2">The monthly report email contains a business summary for the previous month and two PDF attachments: an invoice sales register and a receivables statement. The PDFs contain the complete invoice-level details, so the email body does not repeat every invoice.</p>
+                  </section>
+                  <section>
+                    <h2 className="text-lg font-bold text-gray-900">When it is sent</h2>
+                    <p className="mt-2">The scheduled service checks daily and sends the previous month's report on the first day of the month according to the timezone configured for the report. The default timezone is Asia/Kolkata, with the schedule configured for approximately 00:05 India time.</p>
+                  </section>
+                  <section>
+                    <h2 className="text-lg font-bold text-gray-900">Who receives it</h2>
+                    <p className="mt-2">Delivery uses every unique, non-empty vendor email address saved in vendor profiles that have opted in to monthly reports. Review those profile email addresses and their report preference before enabling reports. The settings email is retained for configuration and run logging, but delivery is synchronized from opted-in vendor profiles.</p>
+                  </section>
+                  <section>
+                    <h2 className="text-lg font-bold text-gray-900">Attachment security</h2>
+                    <p className="mt-2">The current monthly report PDFs are sent without password protection so they open reliably in common email and PDF applications. Treat the attachments as confidential financial records and use a secure mailbox and device.</p>
+                  </section>
+                  <section>
+                    <h2 className="text-lg font-bold text-gray-900">Stopping or changing reports</h2>
+                    <p className="mt-2">To change the delivery address, update the email address in the relevant vendor profile. To stop automated delivery, disable the monthly report setting in your Supabase project. Contact the application administrator if you need help reviewing or removing a report configuration.</p>
+                  </section>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-semibold uppercase tracking-wide text-indigo-600">SmartInvoice AI</p>
+                <h1 className="mt-2 text-3xl font-bold text-gray-900">Contact Us</h1>
+                <p className="mt-2 text-sm text-gray-500">We are here to help with questions, support, or feedback.</p>
+                <div className="mt-8 space-y-6 text-sm leading-7 text-gray-600">
+                  <p>For questions, support, or feedback, please contact us using the details below.</p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <a href="mailto:info@starliftandcontroller.xyz" className="rounded-xl border border-gray-200 bg-gray-50 p-5 transition hover:border-indigo-300 hover:bg-indigo-50">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Email</span>
+                      <span className="mt-2 block font-semibold text-indigo-700 break-all">info@starliftandcontroller.xyz</span>
+                      <span className="mt-1 block text-xs text-gray-500">Send us an email</span>
+                    </a>
+                    <a href="https://www.starliftandcontroller.xyz/contact_us/" target="_blank" rel="noreferrer" className="rounded-xl border border-gray-200 bg-gray-50 p-5 transition hover:border-indigo-300 hover:bg-indigo-50">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Website</span>
+                      <span className="mt-2 block font-semibold text-indigo-700 break-all">Contact page</span>
+                      <span className="mt-1 block text-xs text-gray-500">Visit our website contact page</span>
+                    </a>
+                  </div>
+                  <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-5">
+                    <h2 className="font-bold text-gray-900">SmartInvoice AI support</h2>
+                    <p className="mt-2">When contacting support, include a short description of the issue and the account or company profile involved. Please do not send passwords, API keys, or other confidential credentials.</p>
+                  </div>
+                </div>
+              </>
+            )}
+          </article>
+        )}
       </main>
+      <footer className="no-print border-t border-gray-200 bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+          <span>© {new Date().getFullYear()} SmartInvoice AI</span>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            <button type="button" onClick={() => navigateTo('privacy')} className="hover:text-indigo-600 hover:underline">Privacy Policy</button>
+            <button type="button" onClick={() => navigateTo('report-policy')} className="hover:text-indigo-600 hover:underline">Monthly Email Report Policy</button>
+            <button type="button" onClick={() => navigateTo('contact')} className="hover:text-indigo-600 hover:underline">Contact Us</button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
