@@ -7,7 +7,7 @@ const EmailPreferences: React.FC = () => {
   const state = params.get('state');
   const token = params.get('token');
   const actionUrl = supabaseUrl && token
-    ? `${supabaseUrl}/functions/v1/transactional-email?action=subscribe&v=3&token=${encodeURIComponent(token)}`
+    ? `${supabaseUrl}/functions/v1/transactional-email?action=subscribe&v=4&token=${encodeURIComponent(token)}`
     : null;
 
   const content = state === 'unsubscribed'

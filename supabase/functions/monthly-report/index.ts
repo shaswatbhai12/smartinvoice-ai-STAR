@@ -63,7 +63,7 @@ const unsubscribeToken = async (userId: string) => {
 };
 
 const unsubscribeUrl = async (userId: string) =>
-  `${supabaseUrl}/functions/v1/transactional-email?action=unsubscribe&v=3&token=${encodeURIComponent(await unsubscribeToken(userId))}`;
+  `${supabaseUrl}/functions/v1/transactional-email?action=unsubscribe&v=4&token=${encodeURIComponent(await unsubscribeToken(userId))}`;
 
 const currency = (value: number) => `₹${value.toLocaleString('en-IN', {
   minimumFractionDigits: 2,

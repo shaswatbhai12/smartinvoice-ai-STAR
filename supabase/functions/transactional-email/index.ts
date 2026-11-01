@@ -13,8 +13,8 @@ const tokenFor = async (userId: string) => {
   const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(userId));
   return `${userId}.${Array.from(new Uint8Array(signature)).map(byte => byte.toString(16).padStart(2, '0')).join('')}`;
 };
-const preferenceUrl = async (userId: string) => `${supabaseUrl}/functions/v1/transactional-email?action=unsubscribe&v=3&token=${encodeURIComponent(await tokenFor(userId))}`;
-const subscribeUrl = async (userId: string) => `${supabaseUrl}/functions/v1/transactional-email?action=subscribe&v=3&token=${encodeURIComponent(await tokenFor(userId))}`;
+const preferenceUrl = async (userId: string) => `${supabaseUrl}/functions/v1/transactional-email?action=unsubscribe&v=4&token=${encodeURIComponent(await tokenFor(userId))}`;
+const subscribeUrl = async (userId: string) => `${supabaseUrl}/functions/v1/transactional-email?action=subscribe&v=4&token=${encodeURIComponent(await tokenFor(userId))}`;
 const preferencePage = (title: string, message: string, actionUrl?: string, actionLabel?: string) => `<!doctype html>
 <html lang="en">
   <head>
