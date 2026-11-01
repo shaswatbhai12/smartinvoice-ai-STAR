@@ -27,6 +27,7 @@ export interface InvoiceData {
   // Vendor Info
   vendorName: string;
   vendorAddress: string;
+  stampAddress: string;
   vendorEmail: string;
   receiveMonthlyReports: boolean;
   vendorPhone: string;
@@ -67,6 +68,7 @@ export interface VendorProfile {
   isGstRegistered: boolean;
   vendorName: string;
   vendorAddress: string;
+  stampAddress: string;
   vendorEmail: string;
   vendorPhone: string;
   vendorGstin: string;
@@ -91,6 +93,7 @@ export const EMPTY_INVOICE: InvoiceData = {
   date: new Date().toISOString().split('T')[0],
   vendorName: '',
   vendorAddress: '',
+  stampAddress: '',
   vendorEmail: '',
   receiveMonthlyReports: true,
   vendorPhone: '',

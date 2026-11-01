@@ -11,6 +11,7 @@ const EMPTY_PROFILE: Omit<VendorProfile, 'id'> = {
   isGstRegistered: true,
   vendorName: '',
   vendorAddress: '',
+  stampAddress: '',
   vendorEmail: '',
   receiveMonthlyReports: true,
   vendorPhone: '',
@@ -100,6 +101,11 @@ const ProfileFormModal: React.FC<ProfileFormModalProps> = ({ profileDraft, setPr
           <div className="col-span-2">
             <label className="block text-xs font-medium text-gray-500 mb-1">Address</label>
             <textarea className={`${inputCls} h-16`} placeholder="Full address" value={profileDraft.vendorAddress} onChange={e => setProfileDraft(d => ({ ...d, vendorAddress: e.target.value }))} />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-gray-500 mb-1">Stamp address</label>
+            <textarea className={`${inputCls} h-16`} placeholder="Address to print inside the automatic stamp (defaults to company address)" value={profileDraft.stampAddress} onChange={e => setProfileDraft(d => ({ ...d, stampAddress: e.target.value }))} />
+            <p className="mt-1 text-xs text-gray-500">The invoice will automatically include a company stamp with this address.</p>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Phone</label>
@@ -356,6 +362,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
       isGstRegistered,
       vendorName: profile.vendorName,
       vendorAddress: profile.vendorAddress,
+      stampAddress: profile.stampAddress || profile.vendorAddress,
       vendorEmail: profile.vendorEmail,
       vendorPhone: profile.vendorPhone,
       vendorGstin: isGstRegistered ? profile.vendorGstin : '',
@@ -507,6 +514,7 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
       isGstRegistered,
       vendorName: activeProfile.vendorName,
       vendorAddress: activeProfile.vendorAddress,
+      stampAddress: activeProfile.stampAddress || activeProfile.vendorAddress,
       vendorEmail: activeProfile.vendorEmail,
       vendorPhone: activeProfile.vendorPhone,
       vendorGstin: isGstRegistered ? activeProfile.vendorGstin : '',
@@ -596,6 +604,10 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
             #printable-invoice .items-spacer {
               min-width: 0 !important;
               overflow: hidden !important;
+            }
+            #printable-invoice .invoice-company-stamp {
+              right: 30px !important;
+              bottom: 21px !important;
             }
           </style>
         </head>

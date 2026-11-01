@@ -210,12 +210,16 @@ const InvoicePreview: React.FC<InvoicePreviewProps> = ({ data }) => {
             <p key={i}>{line.trim()}</p>
           ))}
         </div>
-        <div className="px-3 py-2 text-center flex flex-col justify-between min-h-[80px]">
+        <div className="relative overflow-visible px-3 py-2 text-center flex flex-col justify-between min-h-[80px]">
           <p className="text-[10px] uppercase font-bold">CERTIFIED THAT THE PARTICULARS GIVEN ABOVE ARE TRUE AND CORRECT</p>
           <div className="w-full mt-2">
             <p className="text-red-600 font-black uppercase text-[13px] mb-6">FOR {data.vendorName}</p>
-            <div className="h-6 border-b border-dotted border-black w-2/3 mx-auto mb-1"></div>
-            <p className="font-bold text-[12px]">Authorised Signatory</p>
+          <div className="invoice-company-stamp pointer-events-none absolute bottom-[21px] right-[30px] z-10 w-[260px] px-4 py-3 text-blue-700 opacity-90">
+            <p className="text-[15px] font-black uppercase tracking-tight leading-tight">{data.vendorName}</p>
+            <p className="mt-1 whitespace-pre-line text-[11px] font-black tracking-tight leading-tight">{data.stampAddress || data.vendorAddress}</p>
+          </div>
+          <div className="h-6 border-b border-dotted border-black w-2/3 mx-auto mb-1"></div>
+          <p className="font-bold text-[12px]">Authorised Signatory</p>
           </div>
         </div>
       </div>
