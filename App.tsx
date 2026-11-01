@@ -578,9 +578,9 @@ const App: React.FC<AppProps> = ({ sync = null, syncStatus = 'idle', accountSlot
             body { width: 190mm; overflow: hidden; }
             #printable-invoice {
               width: 190mm !important;
-              height: 277mm !important;
-              min-height: 277mm !important;
-              max-height: 277mm !important;
+              height: 267mm !important;
+              min-height: 267mm !important;
+              max-height: 267mm !important;
               margin: 0 auto !important;
               box-sizing: border-box !important;
               overflow: hidden !important;
