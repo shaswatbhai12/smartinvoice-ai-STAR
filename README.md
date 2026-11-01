@@ -8,6 +8,7 @@ GST invoice generator with login (Clerk) and a cloud database (Supabase), so you
 - Search saved invoices by client name, GSTIN or invoice number
 - Unlimited invoice history, with Export / Import backup
 - Installable as an app (PWA)
+- Optional scheduled monthly email: the previous month's invoice list and receivables statement
 
 ## Publish it (about 15 minutes)
 
@@ -40,6 +41,84 @@ Push the project to GitHub (or run `vercel`), import it in Vercel, and add the *
 ### 5. First sign-in
 Open the site **in the browser that holds your old invoices**, create your account, and press OK when the app offers to
 upload the invoices found in that browser. After that, sign in on any device to see them.
+
+## Monthly invoice and receivables email
+
+The scheduled report is implemented in `supabase/functions/monthly-report`. It sends an
+HTML report plus two A4 landscape PDF attachments on the first day of each month using the
+previous month's invoices:
+
+- `<YYYY-MM>_Invoices_Summary.pdf`
+- `<YYYY-MM>_Receivables_Statement.pdf`
+
+The second PDF covers invoices dated from day 1 through the last day of the previous month.
+It includes billed total, receipts, remaining balance, payment status, and receipt values
+as of that month's end. Receipt amounts are read from each invoice's saved `receipts` list.
+Both PDFs are password protected. The password is generated privately from the matched vendor
+profile in this format:
+`CCCCPPPPP` — the first four letters of the company name followed by the first five characters
+of the PAN (spaces and punctuation are removed and letters are uppercased, making a 9-character
+password). If a profile value is shorter than required, `X` is used as padding. The email body
+contains only a hint, never the password itself. Share this private rule only with authorized
+people who need to open the reports.
+
+To enable it:
+
+1. Deploy the function with the Supabase CLI:
+   ```
+   supabase functions deploy monthly-report
+   ```
+2. Set these Supabase Function secrets. Do not put them in `.env.local` or the frontend:
+   ```
+   supabase secrets set RESEND_API_KEY=... MONTHLY_REPORT_FROM="SmartInvoice <reports@send.starliftandcontroller.xyz>" MONTHLY_REPORT_CRON_SECRET=...
+   ```
+   `reports@send.starliftandcontroller.xyz` must be a sender verified in Resend. The function already receives
+   `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from Supabase.
+3. In Supabase SQL Editor, add one settings row for the signed-in Clerk user. Replace
+   `user_xxx` with the user's Clerk subject/user ID. The report recipient is taken from
+   every non-empty `vendorEmail` in that user's vendor profiles; the placeholder below is
+   retained only because the settings table requires a value:
+   ```
+   insert into public.monthly_report_settings (user_id, recipient_email, timezone)
+   values ('user_xxx', 'placeholder@example.com', 'Asia/Kolkata')
+   on conflict (user_id) do update
+     set recipient_email = excluded.recipient_email,
+         timezone = excluded.timezone,
+         enabled = true,
+         updated_at = now();
+   ```
+4. Schedule the function to run daily at 00:05 India time. The function itself sends only
+   when the local date is the 1st, and Supabase cron uses UTC, so 00:05 IST is 18:35 UTC
+   on the previous day:
+   ```
+   select cron.schedule(
+     'smartinvoice-monthly-report',
+     '35 18 * * *',
+     $$
+     select net.http_post(
+       url := current_setting('app.settings.supabase_url') || '/functions/v1/monthly-report',
+       headers := jsonb_build_object(
+         'Content-Type', 'application/json',
+         'x-monthly-report-secret', current_setting('app.settings.monthly_report_cron_secret')
+       ),
+       body := '{}'::jsonb
+     );
+     $$
+   );
+   ```
+   Configure the two `app.settings.*` values using your Supabase project's preferred
+   secrets mechanism. The function's month-level run log prevents duplicate emails if
+   the schedule runs more than once.
+
+To send one immediate test email before the 1st of the month, use the same cron secret and
+add this header to the request:
+
+```text
+x-monthly-report-test: true
+```
+
+The test uses the previous month's invoices, adds `[TEST]` to the subject, and records a
+one-time test run for the user. Repeating the test request will not send another email.
 
 ## Notes
 - Each account's data is private: the database only returns rows belonging to the signed-in user.

@@ -47,6 +47,57 @@ revoke all on public.invoices        from anon;
 grant select, insert, update, delete on public.vendor_profiles to authenticated;
 grant select, insert, update, delete on public.invoices        to authenticated;
 
+-- Monthly report delivery settings. The scheduled Edge Function uses these rows
+-- to send the previous month's invoice and receivables report.
+create table if not exists public.monthly_report_settings (
+  user_id        text primary key,
+  recipient_email text not null,
+  enabled        boolean not null default true,
+  timezone       text not null default 'Asia/Kolkata',
+  updated_at     timestamptz not null default now()
+);
+
+create table if not exists public.monthly_report_runs (
+  user_id       text not null,
+  report_month  text not null,
+  sent_at       timestamptz not null default now(),
+  recipient_email text not null,
+  primary key (user_id, report_month)
+);
+
+create table if not exists public.monthly_report_test_runs (
+  user_id text primary key,
+  sent_at timestamptz not null default now(),
+  recipient_email text not null
+);
+
+alter table public.monthly_report_settings enable row level security;
+alter table public.monthly_report_runs enable row level security;
+alter table public.monthly_report_test_runs enable row level security;
+
+drop policy if exists "own monthly report settings" on public.monthly_report_settings;
+create policy "own monthly report settings" on public.monthly_report_settings
+  for all to authenticated
+  using ((select auth.jwt() ->> 'sub') = user_id)
+  with check ((select auth.jwt() ->> 'sub') = user_id);
+
+drop policy if exists "own monthly report runs" on public.monthly_report_runs;
+create policy "own monthly report runs" on public.monthly_report_runs
+  for select to authenticated
+  using ((select auth.jwt() ->> 'sub') = user_id);
+
+drop policy if exists "own monthly report test runs" on public.monthly_report_test_runs;
+create policy "own monthly report test runs" on public.monthly_report_test_runs
+  for select to authenticated
+  using ((select auth.jwt() ->> 'sub') = user_id);
+
+revoke all on public.monthly_report_settings from anon;
+revoke all on public.monthly_report_runs from anon;
+revoke all on public.monthly_report_test_runs from anon;
+grant select, insert, update, delete on public.monthly_report_settings to authenticated;
+grant select on public.monthly_report_runs to authenticated;
+grant select on public.monthly_report_test_runs to authenticated;
+
 -- OLD OPEN TABLE: if you ever created "app_storage" from the earlier README, anyone with the
 -- public key can still read it. After confirming it holds nothing you need, remove it:
 -- drop table if exists public.app_storage;
