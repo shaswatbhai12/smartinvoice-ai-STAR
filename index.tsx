@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 import { ClerkProvider } from '@clerk/react';
 import App from './App';
 import AuthGate from './components/AuthGate';
+import EmailPreferences from './components/EmailPreferences';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -15,9 +16,12 @@ if (!rootElement) {
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
 
 const root = ReactDOM.createRoot(rootElement);
+const isEmailPreferences = window.location.pathname === '/email-preferences';
 root.render(
   <React.StrictMode>
-    {clerkPublishableKey ? (
+    {isEmailPreferences ? (
+      <EmailPreferences />
+    ) : clerkPublishableKey ? (
       <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/">
         <AuthGate />
       </ClerkProvider>

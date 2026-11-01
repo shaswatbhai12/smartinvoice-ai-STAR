@@ -5,6 +5,7 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const resendApiKey = Deno.env.get('RESEND_API_KEY')!;
 const sender = Deno.env.get('MONTHLY_REPORT_FROM') || 'SmartInvoice <reports@send.starliftandcontroller.xyz>';
+const appUrl = Deno.env.get('SMARTINVOICE_APP_URL') || 'https://invoice.starliftandcontroller.xyz';
 const supabase = createClient(supabaseUrl, serviceRoleKey);
 const escape = (value: unknown) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const tokenFor = async (userId: string) => {
@@ -44,6 +45,12 @@ const htmlResponse = (html: string, status = 200) => new Response(html, {
     'x-content-type-options': 'nosniff',
   },
 });
+const preferenceRedirect = (state: 'unsubscribed' | 'subscribed' | 'invalid' | 'error', token: string) => {
+  const redirectUrl = new URL('/email-preferences', appUrl);
+  redirectUrl.searchParams.set('state', state);
+  if (token) redirectUrl.searchParams.set('token', token);
+  return Response.redirect(redirectUrl.toString(), 303);
+};
 
 const send = async (to: string[], subject: string, title: string, body: string, unsubscribe: string) => {
   const response = await fetch('https://api.resend.com/emails', {
@@ -67,7 +74,7 @@ Deno.serve(async request => {
     const userId = separator > 0 ? token.slice(0, separator) : '';
     const expected = userId ? await tokenFor(userId) : '';
     if (!userId || token !== expected) {
-      return htmlResponse(preferencePage('Invalid link', 'This email preference link is invalid or has expired.'), 400);
+      return preferenceRedirect('invalid', '');
     }
     const { data: existing } = await supabase
       .from('email_preferences')
@@ -81,13 +88,12 @@ Deno.serve(async request => {
       updated_at: new Date().toISOString(),
     });
     if (error) {
-      return htmlResponse(preferencePage('Something went wrong', 'We could not update your email preference. Please try again later.'), 500);
+      return preferenceRedirect('error', '');
     }
     if (action === 'subscribe') {
-      return htmlResponse(preferencePage('You are subscribed again', 'SmartInvoice emails have been enabled for this account.'));
+      return preferenceRedirect('subscribed', '');
     }
-    const resubscribe = await subscribeUrl(userId);
-    return htmlResponse(preferencePage('You are unsubscribed', 'SmartInvoice emails have been stopped for this account.', resubscribe, 'Subscribe again'));
+    return preferenceRedirect('unsubscribed', token);
   }
   const token = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '');
   if (!token) return Response.json({ error: 'Unauthorized' }, { status: 401 });
